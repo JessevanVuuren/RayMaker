@@ -1,0 +1,1 @@
+gcc -I./libs/raylib/ -I./libs/stb/ -L./libs/raylib/ -L./libs/stb/ main.c -o RayMaker -lraylib -lopengl32 -lgdi32 -lwinmm && .\RayMaker.exe
