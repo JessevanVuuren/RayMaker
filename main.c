@@ -238,29 +238,29 @@ int main() {
 
 
         BeginDrawing();
-            BeginMode3D(cam);
-                ClearBackground(GetColor(0x181818FF));
-                draw_graph();
+        BeginMode3D(cam);
+        ClearBackground(GetColor(0x181818FF));
+        draw_graph();
 
-                Vector3 edit_pos = origin;
-                enum EditMode edit = NONE;
-                for (int i = 0; i < arrlen(objects); i++) {
-                    if (objects[i].is_selected) {
-                        edit_pos = GetMatrixTranslation(objects[i].matrix);
-                        edit = MOVE;
-                    }
-                    if (IsKeyDown(KEY_LEFT_CONTROL)) {
-                        edit_pos = origin;
-                        edit = NONE;
-                    }
+        Vector3 edit_pos = origin;
+        enum EditMode edit = NONE;
+        for (int i = 0; i < arrlen(objects); i++) {
+            if (objects[i].is_selected) {
+                edit_pos = GetMatrixTranslation(objects[i].matrix);
+                edit = MOVE;
+            }
+            if (IsKeyDown(KEY_LEFT_CONTROL)) {
+                edit_pos = origin;
+                edit = NONE;
+            }
 
 
-                    DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
-                }
+            DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+        }
 
-                draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-            EndMode3D();
-            DrawFPS(0, 0);
+        draw_xyz_control(edit_pos, edit, cam, &xyz_control);
+        EndMode3D();
+        DrawFPS(0, 0);
         EndDrawing();
     }
 }
