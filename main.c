@@ -1,9 +1,13 @@
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "raylib.h"
 #include "raymath.h"
 #include "rcamera.h"
+
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
 
 #define HEIGHT 800
 #define WIDTH 1200
@@ -14,13 +18,29 @@
 #define SCENE_SIZE 100
 #define SCENE_DETAIL 101
 #define SCENE_GRID_SPACE 1
-#define EDIT_TOOLS_SCALE 1
+#define EDIT_TOOLS_SCALE 4
 
 enum EditMode { MOVE,
                 SCALE,
-                ROTATE
+                ROTATE,
+                NONE
 
 };
+
+typedef struct {
+    int id;
+    bool is_selected;
+    Mesh mesh;
+    Matrix matrix;
+    Material material;
+} Object;
+
+typedef struct {
+    Object x;
+    Object y;
+    Object z;
+} XYZcontrol;
+
 
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
@@ -38,14 +58,13 @@ void draw_graph() {
     }
 }
 
-void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam) {
-    float dist = Vector3Distance(cam.position, cam.target);
+void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontrol *xyz) {
     float magic_cam_dist_rec = .4 * EDIT_TOOLS_SCALE;
-    Vector3 newX = Vector3Add(target, (Vector3){dist * magic_cam_dist_rec, 0, 0});
-    Vector3 newY = Vector3Add(target, (Vector3){0, dist * magic_cam_dist_rec, 0});
-    Vector3 newZ = Vector3Add(target, (Vector3){0, 0, -dist * magic_cam_dist_rec});
+    Vector3 newX = Vector3Add(target, (Vector3){EDIT_TOOLS_SCALE * magic_cam_dist_rec, 0, 0});
+    Vector3 newY = Vector3Add(target, (Vector3){0, EDIT_TOOLS_SCALE * magic_cam_dist_rec, 0});
+    Vector3 newZ = Vector3Add(target, (Vector3){0, 0, -EDIT_TOOLS_SCALE * magic_cam_dist_rec});
 
-    if (target.x == 0 && target.y == 0 && target.z == 0) {
+    if (target.y == 0) {
         target.y += 0.015f;
         newX.y += 0.015f;
         newZ.y += 0.015f;
@@ -55,75 +74,123 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam) {
     float magic_height_dist_rec = .07 * EDIT_TOOLS_SCALE;
     float magic_size_dist_rec = .03 * EDIT_TOOLS_SCALE;
     if (mode == MOVE) {
-        DrawCylinderEx(newX, (Vector3){newX.x + dist * magic_height_dist_rec, newX.y, newX.z}, dist * magic_radius_dist_rec, 0, 30, GetColor(0xFF0000FF));
-        DrawCylinderEx(newY, (Vector3){newY.x, newY.y + dist * magic_height_dist_rec, newY.z}, dist * magic_radius_dist_rec, 0, 30, GetColor(0x00FF00FF));
-        DrawCylinderEx(newZ, (Vector3){newZ.x, newZ.y, newZ.z - dist * magic_height_dist_rec}, dist * magic_radius_dist_rec, 0, 30, GetColor(0x0000FFFF));
+        DrawCylinderEx(newX, (Vector3){newX.x + EDIT_TOOLS_SCALE * magic_height_dist_rec, newX.y, newX.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0xFF0000FF));
+        DrawCylinderEx(newY, (Vector3){newY.x, newY.y + EDIT_TOOLS_SCALE * magic_height_dist_rec, newY.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x00FF00FF));
+        DrawCylinderEx(newZ, (Vector3){newZ.x, newZ.y, newZ.z - EDIT_TOOLS_SCALE * magic_height_dist_rec}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x0000FFFF));
     };
     if (mode == SCALE) {
-        DrawCube(newX, dist * magic_size_dist_rec, dist * magic_size_dist_rec, dist * magic_size_dist_rec, GetColor(0xFF0000FF));
-        DrawCube(newY, dist * magic_size_dist_rec, dist * magic_size_dist_rec, dist * magic_size_dist_rec, GetColor(0x00FF00FF));
-        DrawCube(newZ, dist * magic_size_dist_rec, dist * magic_size_dist_rec, dist * magic_size_dist_rec, GetColor(0x0000FFFF));
+        DrawCube(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
+        DrawCube(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
+        DrawCube(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
     };
     if (mode == ROTATE) {
-        DrawSphere(newX, dist * magic_size_dist_rec, GetColor(0xFF0000FF));
-        DrawSphere(newY, dist * magic_size_dist_rec, GetColor(0x00FF00FF));
-        DrawSphere(newZ, dist * magic_size_dist_rec, GetColor(0x0000FFFF));
+        DrawSphere(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
+        DrawSphere(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
+        DrawSphere(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
     };
 
     DrawLine3D(target, newX, GetColor(0xFF0000FF));
     DrawLine3D(target, newY, GetColor(0x00FF00FF));
     DrawLine3D(target, newZ, GetColor(0x0000FFFF));
+
+    xyz->x.matrix = MatrixTranslate(newX.x - 5.5f / 2.0f, newX.y, newX.z);
+    xyz->y.matrix = MatrixTranslate(newY.x, newY.y - 5.5f / 2.0f, newY.z);
+    xyz->z.matrix = MatrixTranslate(newZ.x, newZ.y, newZ.z + 5.5f / 2.0f);
+
+    DrawMesh(xyz->x.mesh, xyz->x.material, xyz->x.matrix);
+    DrawMesh(xyz->y.mesh, xyz->y.material, xyz->y.matrix);
+    DrawMesh(xyz->z.mesh, xyz->z.material, xyz->z.matrix);
 }
 
-BoundingBox GetBoundingBoxFromRaySegment(Vector3 rayOrigin, Vector3 rayDirection, float rayLength) {
-    Vector3 endPoint = { 
-        rayOrigin.x + rayDirection.x * rayLength, 
-        rayOrigin.y + rayDirection.y * rayLength, 
-        rayOrigin.z + rayDirection.z * rayLength 
-    };
+void init_XYZ_controls(XYZcontrol *xyz) {
+    Object hit_box_x;
+    hit_box_x.id = 1;
+    hit_box_x.is_selected = false;
+    hit_box_x.mesh = GenMeshCube(7.5f, .5f, .5f);
+    hit_box_x.material = LoadMaterialDefault();
+    hit_box_x.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF000055);
+    hit_box_x.matrix = MatrixTranslate(7.5f / 2, 0.0f, 0.0f);
 
-    Vector3 min = { 
-        fmin(rayOrigin.x, endPoint.x), 
-        fmin(rayOrigin.y, endPoint.y), 
-        fmin(rayOrigin.z, endPoint.z) 
-    };
-    Vector3 max = { 
-        fmax(rayOrigin.x, endPoint.x), 
-        fmax(rayOrigin.y, endPoint.y), 
-        fmax(rayOrigin.z, endPoint.z) 
-    };
+    Object hit_box_y;
+    hit_box_y.id = 1;
+    hit_box_y.is_selected = false;
+    hit_box_y.mesh = GenMeshCube(.5f, 7.5f, .5f);
+    hit_box_y.material = LoadMaterialDefault();
+    hit_box_y.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF0055);
+    hit_box_y.matrix = MatrixTranslate(0.0f, 7.5f / 2, 0.0f);
 
-    BoundingBox box = { min, max };
-    return box;
+    Object hit_box_z;
+    hit_box_z.id = 1;
+    hit_box_z.is_selected = false;
+    hit_box_z.mesh = GenMeshCube(.5f, .5f, 7.5f);
+    hit_box_z.material = LoadMaterialDefault();
+    hit_box_z.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FF55);
+    hit_box_z.matrix = MatrixTranslate(0.0f, 0.0f, -7.5f / 2);
+
+    xyz->x = hit_box_x;
+    xyz->y = hit_box_y;
+    xyz->z = hit_box_z;
+}
+
+Vector3 GetMatrixTranslation(Matrix mat) {
+    Vector3 translation;
+    translation.x = mat.m12;
+    translation.y = mat.m13;
+    translation.z = mat.m14;
+    return translation;
 }
 
 int main() {
-    Camera3D cam = {
-        .fovy = 90,
-        .position = camera_start_pos,
-        .target = origin,
-        .projection = CAMERA_PERSPECTIVE,
-        .up = camera_start_up};
+    Camera3D cam = {.fovy = 90, .position = camera_start_pos, .target = origin, .projection = CAMERA_PERSPECTIVE, .up = camera_start_up};
 
     SetTargetFPS(60);
     InitWindow(WIDTH, HEIGHT, "RayMaker");
+    SetExitKey(0);
 
-    Mesh testCube = GenMeshCube(1.0f,1.0f,1.0f);
-    Material mat = LoadMaterialDefault();
-    // mat.maps[MATERIAL_MAP_DIFFUSE].color = RED;
-    Matrix matrix = MatrixTranslate(0.0f,0.0f,0.0f);
+    Object *objects = NULL;
+
+    XYZcontrol xyz_control;
+    init_XYZ_controls(&xyz_control);
+
+    Object test_cube1;
+    test_cube1.id = 1;
+    test_cube1.is_selected = false;
+    test_cube1.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
+    test_cube1.material = LoadMaterialDefault();
+    test_cube1.material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
+    test_cube1.matrix = MatrixTranslate(10.0f, 0.0f, 0.0f);
+
+    Object test_cube2;
+    test_cube2.id = 2;
+    test_cube2.is_selected = false;
+    test_cube2.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
+    test_cube2.material = LoadMaterialDefault();
+    test_cube2.material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
+    test_cube2.matrix = MatrixTranslate(-10.0f, 0.0f, 0.0f);
+
+    arrput(objects, test_cube1);
+    arrput(objects, test_cube2);
+
+    Object last_selected = {0};
 
     while (!WindowShouldClose()) {
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
             Vector2 mouseDelta = GetMouseDelta();
             Vector2 mousePos = GetMousePosition();
             if (mousePos.x > 70) {
                 CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
                 CameraPitch(&cam, -mouseDelta.y * CAMERA_SPEED, true, true, false);
+            }
+        }
+
+
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            for (int i = 0; i < arrlen(objects); i++) {
+                objects[i].is_selected = false;
             }
         }
 
@@ -135,12 +202,37 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
-            RayCollision box = GetRayCollisionBox(ray, GetMeshBoundingBox(testCube));
-    
-            if (box.hit) {
-                printf("box hit, LETS FUCKING GOOOOO\n");
-            } else {
-                printf("box not hit\n");
+            for (int i = 0; i < arrlen(objects); i++) {
+                RayCollision box = GetRayCollisionMesh(ray, objects[i].mesh, objects[i].matrix);
+                if (box.hit) {
+                    last_selected = objects[i];
+                    objects[i].is_selected = true;
+                } else if (last_selected.id != objects[i].id) {
+                    objects[i].is_selected = false;
+                }
+            }
+        }
+
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+            Ray ray = GetMouseRay(GetMousePosition(), cam);
+
+            RayCollision box_x = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
+            RayCollision box_y = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
+            RayCollision box_z = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
+
+            if (box_x.hit) {
+                for (int i = 0; i < arrlen(objects); i++) {
+                    if (objects[i].is_selected) {
+                        Vector3 pos = GetMatrixTranslation(objects[i].matrix);
+                        objects[i].matrix = MatrixTranslate(pos.x + GetMouseDelta().x, pos.y, pos.z);
+                    }
+                }
+            }
+            if (box_y.hit) {
+                printf("box:x\n");
+            }
+            if (box_z.hit) {
+                printf("box:x\n");
             }
         }
 
@@ -149,10 +241,24 @@ int main() {
             BeginMode3D(cam);
                 ClearBackground(GetColor(0x181818FF));
                 draw_graph();
-                draw_xyz_control(origin, (enum EditMode)MOVE, cam);
 
-                DrawMesh(testCube, mat, matrix);
+                Vector3 edit_pos = origin;
+                enum EditMode edit = NONE;
+                for (int i = 0; i < arrlen(objects); i++) {
+                    if (objects[i].is_selected) {
+                        edit_pos = GetMatrixTranslation(objects[i].matrix);
+                        edit = MOVE;
+                    }
+                    if (IsKeyDown(KEY_LEFT_CONTROL)) {
+                        edit_pos = origin;
+                        edit = NONE;
+                    }
 
+
+                    DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+                }
+
+                draw_xyz_control(edit_pos, edit, cam, &xyz_control);
             EndMode3D();
             DrawFPS(0, 0);
         EndDrawing();
