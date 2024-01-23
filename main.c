@@ -29,7 +29,6 @@ enum EditMode { MOVE,
 
 typedef struct {
     int id;
-    bool is_selected;
     Mesh mesh;
     Matrix matrix;
     Material material;
@@ -39,10 +38,9 @@ typedef struct {
     Object x;
     Object y;
     Object z;
-    bool x_selected;
     RayCollision x_ray;
-    bool y_selected;
-    bool z_selected;
+    RayCollision y_ray;
+    RayCollision z_ray;
     Object hidden_plane_x;
     Object hidden_plane_y;
     Object hidden_plane_z;
@@ -58,6 +56,14 @@ typedef struct {
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
 Vector3 origin = {0};
+
+Vector3 get_matrix_translation(Matrix mat) {
+    Vector3 translation;
+    translation.x = mat.m12;
+    translation.y = mat.m13;
+    translation.z = mat.m14;
+    return translation;
+}
 
 void draw_graph() {
 
@@ -110,15 +116,14 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     xyz->y.matrix = MatrixTranslate(newY.x, newY.y - 5.5f / 2.0f, newY.z);
     xyz->z.matrix = MatrixTranslate(newZ.x, newZ.y, newZ.z + 5.5f / 2.0f);
 
-    DrawMesh(xyz->x.mesh, xyz->x.material, xyz->x.matrix);
-    DrawMesh(xyz->y.mesh, xyz->y.material, xyz->y.matrix);
-    DrawMesh(xyz->z.mesh, xyz->z.material, xyz->z.matrix);
+    // DrawMesh(xyz->x.mesh, xyz->x.material, xyz->x.matrix);
+    // DrawMesh(xyz->y.mesh, xyz->y.material, xyz->y.matrix);
+    // DrawMesh(xyz->z.mesh, xyz->z.material, xyz->z.matrix);
 }
 
 void init_XYZ_controls(XYZcontrol *xyz) {
     Object hit_box_x;
     hit_box_x.id = 1;
-    hit_box_x.is_selected = false;
     hit_box_x.mesh = GenMeshCube(7.5f, .5f, .5f);
     hit_box_x.material = LoadMaterialDefault();
     hit_box_x.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF000055);
@@ -126,7 +131,6 @@ void init_XYZ_controls(XYZcontrol *xyz) {
 
     Object hit_box_y;
     hit_box_y.id = 1;
-    hit_box_y.is_selected = false;
     hit_box_y.mesh = GenMeshCube(.5f, 7.5f, .5f);
     hit_box_y.material = LoadMaterialDefault();
     hit_box_y.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF0055);
@@ -134,31 +138,25 @@ void init_XYZ_controls(XYZcontrol *xyz) {
 
     Object hit_box_z;
     hit_box_z.id = 1;
-    hit_box_z.is_selected = false;
     hit_box_z.mesh = GenMeshCube(.5f, .5f, 7.5f);
     hit_box_z.material = LoadMaterialDefault();
     hit_box_z.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FF55);
     hit_box_z.matrix = MatrixTranslate(0.0f, 0.0f, -7.5f / 2);
 
     xyz->x_ray.hit = false;
+    xyz->y_ray.hit = false;
+    xyz->z_ray.hit = false;
 
-    xyz->x_selected = false;
-    xyz->y_selected = false;
-    xyz->z_selected = false;
-
-    xyz->hidden_plane_x.mesh = GenMeshPlane(100.0f, 100.0f, 1, 1);
+    xyz->hidden_plane_x.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
+    xyz->hidden_plane_y.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
+    xyz->hidden_plane_y.matrix = MatrixTranslate(0,0,0);
+    xyz->hidden_plane_y.matrix = MatrixRotate(MatrixTranslate(0,0,0), MatrixRotateX(1.5));
+    
+    xyz->hidden_plane_z.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
 
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
-}
-
-Vector3 get_matrix_translation(Matrix mat) {
-    Vector3 translation;
-    translation.x = mat.m12;
-    translation.y = mat.m13;
-    translation.z = mat.m14;
-    return translation;
 }
 
 void move_selected_item(Object *objects) {
@@ -187,7 +185,6 @@ int main() {
 
     Object test_cube1;
     test_cube1.id = 1;
-    test_cube1.is_selected = false;
     test_cube1.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
     test_cube1.material = LoadMaterialDefault();
     test_cube1.material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
@@ -195,7 +192,6 @@ int main() {
 
     Object test_cube2;
     test_cube2.id = 2;
-    test_cube2.is_selected = false;
     test_cube2.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
     test_cube2.material = LoadMaterialDefault();
     test_cube2.material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
@@ -214,17 +210,14 @@ int main() {
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
             Vector2 mouseDelta = GetMouseDelta();
             Vector2 mousePos = GetMousePosition();
-            if (mousePos.x > 70) {
-                CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
-                CameraPitch(&cam, -mouseDelta.y * CAMERA_SPEED, true, true, false);
-            }
+
+            CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
+            CameraPitch(&cam, -mouseDelta.y * CAMERA_SPEED, true, true, false);
         }
 
 
         if (IsKeyPressed(KEY_ESCAPE)) {
-            for (int i = 0; i < arrlen(objects); i++) {
-                objects[i].is_selected = false;
-            }
+            selected.is_selected = false;
         }
 
         if (IsKeyPressed(KEY_R)) {
@@ -245,28 +238,29 @@ int main() {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
             xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
-            xyz_control.y_selected = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix).hit;
-            xyz_control.z_selected = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix).hit;
+            xyz_control.y_ray = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
+            xyz_control.z_ray = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             xyz_control.x_ray.hit = false;
-            xyz_control.y_selected = false;
-            xyz_control.x_selected = false;
+            xyz_control.y_ray.hit = false;
+            xyz_control.z_ray.hit = false;
         }
 
-        if (xyz_control.x_ray.hit) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-            Vector3 pos = selected.pos;
+        // if (xyz_control.x_ray.hit) {
+        //     Ray ray = GetMouseRay(GetMousePosition(), cam);
+        //     Vector3 pos = selected.pos;
 
-            Mesh plane_x = xyz_control.hidden_plane_x.mesh;
-            Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
+        //     Mesh plane_x = xyz_control.hidden_plane_x.mesh;
+        //     Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
 
-            float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
+        //     float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
 
-            Matrix new_pos = MatrixTranslate(point + (selected.pos.x - xyz_control.x_ray.point.x), pos.y, pos.z);
-            objects[selected.index].matrix = new_pos;
-        }
+        //     Matrix new_pos = MatrixTranslate(point + (selected.pos.x - xyz_control.x_ray.point.x), pos.y, pos.z);
+        //     objects[selected.index].matrix = new_pos;
+        // }
+
 
 
 
@@ -288,6 +282,25 @@ int main() {
         if (IsKeyDown(KEY_LEFT_CONTROL)) edit_pos = origin;
 
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
+
+        
+        if (xyz_control.y_ray.hit) {
+            Ray ray = GetMouseRay(GetMousePosition(), cam);
+            Vector3 pos = selected.pos;
+
+            Mesh plane_y = xyz_control.hidden_plane_y.mesh;
+            Matrix matrix_y = MatrixTranslate(pos.x, pos.y, pos.z);
+            Material mat = LoadMaterialDefault();
+            mat.maps[MATERIAL_MAP_DIFFUSE].color = GREEN;
+            DrawMesh(plane_y, mat, xyz_control.hidden_plane_y.matrix);
+
+            float point = GetRayCollisionMesh(ray, plane_y, matrix_y).point.y;
+
+            Matrix new_pos = MatrixTranslate(pos.x, point + (selected.pos.x - xyz_control.x_ray.point.x), pos.z);
+            objects[selected.index].matrix = new_pos;
+        }
+
+
         EndMode3D();
         DrawFPS(0, 0);
         EndDrawing();
