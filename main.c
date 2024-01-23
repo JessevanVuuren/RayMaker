@@ -52,6 +52,7 @@ typedef struct {
     Object object;
     bool is_selected;
     Vector3 pos;
+    int index;
 } Selected;
 
 Vector3 camera_start_pos = {10, 10, -10};
@@ -139,18 +140,20 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     hit_box_z.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FF55);
     hit_box_z.matrix = MatrixTranslate(0.0f, 0.0f, -7.5f / 2);
 
+    xyz->x_ray.hit = false;
+
     xyz->x_selected = false;
     xyz->y_selected = false;
     xyz->z_selected = false;
 
-    xyz->hidden_plane_x.mesh = GenMeshPlane(100.0f, 100.0f, 1, 1);              
+    xyz->hidden_plane_x.mesh = GenMeshPlane(100.0f, 100.0f, 1, 1);
 
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
 }
 
-Vector3 GetMatrixTranslation(Matrix mat) {
+Vector3 get_matrix_translation(Matrix mat) {
     Vector3 translation;
     translation.x = mat.m12;
     translation.y = mat.m13;
@@ -159,6 +162,15 @@ Vector3 GetMatrixTranslation(Matrix mat) {
 }
 
 void move_selected_item(Object *objects) {
+}
+
+Selected set_selected(Object object, int index) {
+    Selected selected;
+    selected.object = object;
+    selected.pos = get_matrix_translation(object.matrix);
+    selected.index = index;
+    selected.is_selected = true;
+    return selected;
 }
 
 int main() {
@@ -192,7 +204,6 @@ int main() {
     arrput(objects, test_cube1);
     arrput(objects, test_cube2);
 
-    Object last_selected = {0};
     Selected selected = {0};
 
     while (!WindowShouldClose()) {
@@ -226,12 +237,7 @@ int main() {
 
             for (int i = 0; i < arrlen(objects); i++) {
                 RayCollision box = GetRayCollisionMesh(ray, objects[i].mesh, objects[i].matrix);
-                if (box.hit) {
-                    last_selected = objects[i];
-                    objects[i].is_selected = true;
-                } else if (last_selected.id != objects[i].id) {
-                    objects[i].is_selected = false;
-                }
+                if (box.hit) selected = set_selected(objects[i], i);
             }
         }
 
@@ -241,7 +247,6 @@ int main() {
             xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
             xyz_control.y_selected = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix).hit;
             xyz_control.z_selected = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix).hit;
- 
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -251,46 +256,40 @@ int main() {
         }
 
         if (xyz_control.x_ray.hit) {
-            for (int i = 0; i < arrlen(objects); i++) {
-                if (objects[i].is_selected) {
+            Ray ray = GetMouseRay(GetMousePosition(), cam);
+            Vector3 pos = selected.pos;
 
-                    Ray ray = GetMouseRay(GetMousePosition(), cam);
-                    Vector3 pos = GetMatrixTranslation(objects[i].matrix);
+            Mesh plane_x = xyz_control.hidden_plane_x.mesh;
+            Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
 
-                    Mesh plane_x = xyz_control.hidden_plane_x.mesh;
-                    Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
+            float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
 
-                    float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
-
-                    printf("point: %f, pos: %f, newDis: %f\n", point, pos.x, fabsf(pos.x) - fabsf(xyz_control.x_ray.point.x));
-
-                    objects[i].matrix = MatrixTranslate(point, pos.y, pos.z);
-
-                }
-            }
+            Matrix new_pos = MatrixTranslate(point + (selected.pos.x - xyz_control.x_ray.point.x), pos.y, pos.z);
+            objects[selected.index].matrix = new_pos;
         }
 
 
+
         BeginDrawing();
-            BeginMode3D(cam);
-                ClearBackground(GetColor(0x181818FF));
-                draw_graph();
+        BeginMode3D(cam);
+        ClearBackground(GetColor(0x181818FF));
+        draw_graph();
 
-                Vector3 edit_pos = origin;
-                enum EditMode edit = NONE;
-                for (int i = 0; i < arrlen(objects); i++) {
-                    if (objects[i].is_selected) {
-                        edit_pos = GetMatrixTranslation(objects[i].matrix);
-                        edit = MOVE;
-                    }
-                    if (IsKeyDown(KEY_LEFT_CONTROL)) edit_pos = origin;
+        Vector3 edit_pos = origin;
+        enum EditMode edit = NONE;
+        for (int i = 0; i < arrlen(objects); i++) {
+            DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+        }
 
-                    DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
-                }
+        if (selected.is_selected) {
+            edit_pos = get_matrix_translation(objects[selected.index].matrix);
+            edit = MOVE;
+        }
+        if (IsKeyDown(KEY_LEFT_CONTROL)) edit_pos = origin;
 
-                draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-            EndMode3D();
-            DrawFPS(0, 0);
+        draw_xyz_control(edit_pos, edit, cam, &xyz_control);
+        EndMode3D();
+        DrawFPS(0, 0);
         EndDrawing();
     }
 }
