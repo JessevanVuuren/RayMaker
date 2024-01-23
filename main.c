@@ -40,10 +40,19 @@ typedef struct {
     Object y;
     Object z;
     bool x_selected;
+    RayCollision x_ray;
     bool y_selected;
     bool z_selected;
+    Object hidden_plane_x;
+    Object hidden_plane_y;
+    Object hidden_plane_z;
 } XYZcontrol;
 
+typedef struct {
+    Object object;
+    bool is_selected;
+    Vector3 pos;
+} Selected;
 
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
@@ -134,6 +143,8 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     xyz->y_selected = false;
     xyz->z_selected = false;
 
+    xyz->hidden_plane_x.mesh = GenMeshPlane(100.0f, 100.0f, 1, 1);              
+
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
@@ -182,6 +193,7 @@ int main() {
     arrput(objects, test_cube2);
 
     Object last_selected = {0};
+    Selected selected = {0};
 
     while (!WindowShouldClose()) {
 
@@ -226,57 +238,59 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
-            xyz_control.x_selected = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix).hit;
+            xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
             xyz_control.y_selected = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix).hit;
             xyz_control.z_selected = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix).hit;
+ 
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            xyz_control.x_selected = false;
+            xyz_control.x_ray.hit = false;
             xyz_control.y_selected = false;
             xyz_control.x_selected = false;
         }
 
-        if (xyz_control.x_selected) {
+        if (xyz_control.x_ray.hit) {
             for (int i = 0; i < arrlen(objects); i++) {
                 if (objects[i].is_selected) {
 
                     Ray ray = GetMouseRay(GetMousePosition(), cam);
                     Vector3 pos = GetMatrixTranslation(objects[i].matrix);
-                    int inc = GetMouseDelta().x + GetMouseDelta().y;
-                    objects[i].matrix = MatrixTranslate(xyz_control.x_ray.direction.x + inc + pos.x,pos.y,pos.z);
 
+                    Mesh plane_x = xyz_control.hidden_plane_x.mesh;
+                    Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
 
-                    // objects[i].matrix = MatrixTranslate(pos.x - (inc * .1f), pos.y, pos.z);
+                    float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
+
+                    printf("point: %f, pos: %f, newDis: %f\n", point, pos.x, fabsf(pos.x) - fabsf(xyz_control.x_ray.point.x));
+
+                    objects[i].matrix = MatrixTranslate(point, pos.y, pos.z);
+
                 }
             }
         }
 
 
         BeginDrawing();
-        BeginMode3D(cam);
-        ClearBackground(GetColor(0x181818FF));
-        draw_graph();
+            BeginMode3D(cam);
+                ClearBackground(GetColor(0x181818FF));
+                draw_graph();
 
-        Vector3 edit_pos = origin;
-        enum EditMode edit = NONE;
-        for (int i = 0; i < arrlen(objects); i++) {
-            if (objects[i].is_selected) {
-                edit_pos = GetMatrixTranslation(objects[i].matrix);
-                edit = MOVE;
-            }
-            if (IsKeyDown(KEY_LEFT_CONTROL)) {
-                edit_pos = origin;
-                edit = NONE;
-            }
+                Vector3 edit_pos = origin;
+                enum EditMode edit = NONE;
+                for (int i = 0; i < arrlen(objects); i++) {
+                    if (objects[i].is_selected) {
+                        edit_pos = GetMatrixTranslation(objects[i].matrix);
+                        edit = MOVE;
+                    }
+                    if (IsKeyDown(KEY_LEFT_CONTROL)) edit_pos = origin;
 
+                    DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+                }
 
-            DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
-        }
-
-        draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-        EndMode3D();
-        DrawFPS(0, 0);
+                draw_xyz_control(edit_pos, edit, cam, &xyz_control);
+            EndMode3D();
+            DrawFPS(0, 0);
         EndDrawing();
     }
 }
