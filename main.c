@@ -39,6 +39,9 @@ typedef struct {
     Object x;
     Object y;
     Object z;
+    bool x_selected;
+    bool y_selected;
+    bool z_selected;
 } XYZcontrol;
 
 
@@ -127,6 +130,10 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     hit_box_z.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FF55);
     hit_box_z.matrix = MatrixTranslate(0.0f, 0.0f, -7.5f / 2);
 
+    xyz->x_selected = false;
+    xyz->y_selected = false;
+    xyz->z_selected = false;
+
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
@@ -138,6 +145,9 @@ Vector3 GetMatrixTranslation(Matrix mat) {
     translation.y = mat.m13;
     translation.z = mat.m14;
     return translation;
+}
+
+void move_selected_item(Object *objects) {
 }
 
 int main() {
@@ -213,26 +223,32 @@ int main() {
             }
         }
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
-            RayCollision box_x = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
-            RayCollision box_y = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
-            RayCollision box_z = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
+            xyz_control.x_selected = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix).hit;
+            xyz_control.y_selected = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix).hit;
+            xyz_control.z_selected = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix).hit;
+        }
 
-            if (box_x.hit) {
-                for (int i = 0; i < arrlen(objects); i++) {
-                    if (objects[i].is_selected) {
-                        Vector3 pos = GetMatrixTranslation(objects[i].matrix);
-                        objects[i].matrix = MatrixTranslate(pos.x + GetMouseDelta().x, pos.y, pos.z);
-                    }
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            xyz_control.x_selected = false;
+            xyz_control.y_selected = false;
+            xyz_control.x_selected = false;
+        }
+
+        if (xyz_control.x_selected) {
+            for (int i = 0; i < arrlen(objects); i++) {
+                if (objects[i].is_selected) {
+
+                    Ray ray = GetMouseRay(GetMousePosition(), cam);
+                    Vector3 pos = GetMatrixTranslation(objects[i].matrix);
+                    int inc = GetMouseDelta().x + GetMouseDelta().y;
+                    objects[i].matrix = MatrixTranslate(xyz_control.x_ray.direction.x + inc + pos.x,pos.y,pos.z);
+
+
+                    // objects[i].matrix = MatrixTranslate(pos.x - (inc * .1f), pos.y, pos.z);
                 }
-            }
-            if (box_y.hit) {
-                printf("box:x\n");
-            }
-            if (box_z.hit) {
-                printf("box:x\n");
             }
         }
 
