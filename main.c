@@ -41,9 +41,7 @@ typedef struct {
     RayCollision x_ray;
     RayCollision y_ray;
     RayCollision z_ray;
-    Object hidden_plane_x;
-    Object hidden_plane_y;
-    Object hidden_plane_z;
+    Object hidden_box;
 } XYZcontrol;
 
 typedef struct {
@@ -147,13 +145,7 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     xyz->y_ray.hit = false;
     xyz->z_ray.hit = false;
 
-    xyz->hidden_plane_x.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
-    xyz->hidden_plane_y.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
-    xyz->hidden_plane_y.matrix = MatrixTranslate(0,0,0);
-    xyz->hidden_plane_y.matrix = MatrixRotate(MatrixTranslate(0,0,0), MatrixRotateX(1.5));
-    
-    xyz->hidden_plane_z.mesh = GenMeshPlane(10000.0f, 10000.0f, 1, 1);
-
+    xyz->hidden_box.mesh = GenMeshCube(20000, 20000, 20000);
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
@@ -202,6 +194,11 @@ int main() {
 
     Selected selected = {0};
 
+    selected.index = 1;
+    selected.is_selected = true;
+    selected.object = test_cube2;
+    selected.pos = get_matrix_translation(MatrixTranslate(-10.0f, 0.0f, 0.0f));
+
     while (!WindowShouldClose()) {
 
         float dist = GetMouseWheelMove();
@@ -228,41 +225,22 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
+            xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
+            xyz_control.y_ray = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
+            xyz_control.z_ray = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
+
             for (int i = 0; i < arrlen(objects); i++) {
                 RayCollision box = GetRayCollisionMesh(ray, objects[i].mesh, objects[i].matrix);
                 if (box.hit) selected = set_selected(objects[i], i);
             }
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-
-            xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
-            xyz_control.y_ray = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
-            xyz_control.z_ray = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
-        }
-
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            selected.pos = get_matrix_translation(objects[selected.index].matrix);
             xyz_control.x_ray.hit = false;
             xyz_control.y_ray.hit = false;
             xyz_control.z_ray.hit = false;
         }
-
-        // if (xyz_control.x_ray.hit) {
-        //     Ray ray = GetMouseRay(GetMousePosition(), cam);
-        //     Vector3 pos = selected.pos;
-
-        //     Mesh plane_x = xyz_control.hidden_plane_x.mesh;
-        //     Matrix matrix_x = MatrixTranslate(pos.x, pos.y, pos.z);
-
-        //     float point = GetRayCollisionMesh(ray, plane_x, matrix_x).point.x;
-
-        //     Matrix new_pos = MatrixTranslate(point + (selected.pos.x - xyz_control.x_ray.point.x), pos.y, pos.z);
-        //     objects[selected.index].matrix = new_pos;
-        // }
-
-
-
 
         BeginDrawing();
         BeginMode3D(cam);
@@ -271,34 +249,100 @@ int main() {
 
         Vector3 edit_pos = origin;
         enum EditMode edit = NONE;
-        for (int i = 0; i < arrlen(objects); i++) {
+
+        for (int i = 0; i < arrlen(objects); i++)
             DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
-        }
 
         if (selected.is_selected) {
             edit_pos = get_matrix_translation(objects[selected.index].matrix);
             edit = MOVE;
         }
-        if (IsKeyDown(KEY_LEFT_CONTROL)) edit_pos = origin;
+        if (IsKeyDown(KEY_LEFT_CONTROL)) {
+            edit_pos = origin;
+            edit = NONE;
+        }
 
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
 
-        
-        if (xyz_control.y_ray.hit) {
+        if (xyz_control.x_ray.hit) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
+            Object cube = xyz_control.hidden_box;
             Vector3 pos = selected.pos;
 
-            Mesh plane_y = xyz_control.hidden_plane_y.mesh;
-            Matrix matrix_y = MatrixTranslate(pos.x, pos.y, pos.z);
-            Material mat = LoadMaterialDefault();
-            mat.maps[MATERIAL_MAP_DIFFUSE].color = GREEN;
-            DrawMesh(plane_y, mat, xyz_control.hidden_plane_y.matrix);
+            Mesh mesh = cube.mesh;
 
-            float point = GetRayCollisionMesh(ray, plane_y, matrix_y).point.y;
 
-            Matrix new_pos = MatrixTranslate(pos.x, point + (selected.pos.x - xyz_control.x_ray.point.x), pos.z);
-            objects[selected.index].matrix = new_pos;
+            float angleInRadians = atan2f(cam.position.z, cam.position.y);
+            float scale = 10000 / sqrtf(powf(cam.position.z, 2) + powf(cam.position.y, 2));
+
+            Matrix translation = MatrixTranslate(pos.x, -cam.position.y * scale + pos.y, -cam.position.z * scale + pos.z);
+
+            Vector3 axis = Vector3Normalize((Vector3){360, 0, 0});
+
+            Matrix rotation = MatrixRotate(axis, angleInRadians);
+
+            Matrix matrix = MatrixMultiply(rotation, translation);
+
+
+            float point = GetRayCollisionMesh(ray, mesh, matrix).point.x;
+            float point_offset = point + (selected.pos.x - xyz_control.x_ray.point.x);
+
+            objects[selected.index].matrix = MatrixTranslate(point_offset, pos.y, pos.z);
         }
+
+        if (xyz_control.y_ray.hit) {
+            Ray ray = GetMouseRay(GetMousePosition(), cam);
+            Object cube = xyz_control.hidden_box;
+            Vector3 pos = selected.pos;
+
+            Mesh mesh = cube.mesh;
+
+
+            float angleInRadians = atan2f(cam.position.x, cam.position.z);
+
+            float scale = 10000 / sqrtf(powf(cam.position.x, 2) + powf(cam.position.z, 2));
+
+            Matrix translation = MatrixTranslate(-cam.position.x * scale + pos.x, pos.y, -cam.position.z * scale + pos.z);
+
+            Vector3 axis = Vector3Normalize((Vector3){0, 360, 0});
+
+            Matrix rotation = MatrixRotate(axis, angleInRadians);
+
+            Matrix matrix = MatrixMultiply(rotation, translation);
+
+            float point = GetRayCollisionMesh(ray, mesh, matrix).point.y;
+            float point_offset = point + (selected.pos.y - xyz_control.y_ray.point.y);
+
+            objects[selected.index].matrix = MatrixTranslate(pos.x, point_offset, pos.z);
+        }
+
+
+        if (xyz_control.z_ray.hit) {
+            Ray ray = GetMouseRay(GetMousePosition(), cam);
+            Object cube = xyz_control.hidden_box;
+            Vector3 pos = selected.pos;
+
+            Mesh mesh = cube.mesh;
+
+            float angleInRadians = atan2f(cam.position.y, cam.position.x);
+
+            float scale = 10000 / sqrtf(powf(cam.position.x, 2) + powf(cam.position.y, 2));
+
+            Matrix translation = MatrixTranslate(-cam.position.x * scale + pos.x, -cam.position.y * scale + pos.y, pos.z);
+
+            Vector3 axis = Vector3Normalize((Vector3){0, 0, 360});
+
+            Matrix rotation = MatrixRotate(axis, angleInRadians);
+
+            Matrix matrix = MatrixMultiply(rotation, translation);
+
+
+            float point = GetRayCollisionMesh(ray, mesh, matrix).point.z;
+            float point_offset = point + (selected.pos.z - xyz_control.z_ray.point.z);
+
+            objects[selected.index].matrix = MatrixTranslate(pos.x, pos.y, point_offset);
+        }
+
 
 
         EndMode3D();
