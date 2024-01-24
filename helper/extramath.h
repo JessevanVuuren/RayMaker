@@ -16,8 +16,6 @@ Vector3 getMatrixTranslation(Matrix mat) {
     return translation;
 }
 
-Matrix Vector2ToMatrix(Vector3 pos) {
-    return MatrixTranslate(pos.x, pos.y, pos.z);
+void printV(Vector3 vec) {
+    printf("vec: X: %f, Y: %f, X: %f\n", vec.x, vec.y, vec.z);
 }
-
-        // printf("vec: %f, %f, %f\n", ppp.x, ppp.y, ppp.z);
