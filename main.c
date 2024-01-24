@@ -6,6 +6,8 @@
 #include "raymath.h"
 #include "rcamera.h"
 
+#include "extramath.h"
+
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
@@ -41,7 +43,7 @@ typedef struct {
     RayCollision x_ray;
     RayCollision y_ray;
     RayCollision z_ray;
-    Object hidden_box;
+    Mesh hidden_box;
 } XYZcontrol;
 
 typedef struct {
@@ -54,14 +56,6 @@ typedef struct {
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
 Vector3 origin = {0};
-
-Vector3 get_matrix_translation(Matrix mat) {
-    Vector3 translation;
-    translation.x = mat.m12;
-    translation.y = mat.m13;
-    translation.z = mat.m14;
-    return translation;
-}
 
 void draw_graph() {
 
@@ -145,7 +139,7 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     xyz->y_ray.hit = false;
     xyz->z_ray.hit = false;
 
-    xyz->hidden_box.mesh = GenMeshCube(20000, 20000, 20000);
+    xyz->hidden_box = GenMeshCube(20000, 20000, 20000);
     xyz->x = hit_box_x;
     xyz->y = hit_box_y;
     xyz->z = hit_box_z;
@@ -157,10 +151,32 @@ void move_selected_item(Object *objects) {
 Selected set_selected(Object object, int index) {
     Selected selected;
     selected.object = object;
-    selected.pos = get_matrix_translation(object.matrix);
+    selected.pos = getMatrixTranslation(object.matrix);
     selected.index = index;
     selected.is_selected = true;
     return selected;
+}
+
+Matrix move_object(Camera cam, Vector3 pos, Mesh cube, Vector2 camera_pos, Vector3 axis, float offset_point) {
+    Ray ray = GetMouseRay(GetMousePosition(), cam);
+
+    float angle = atan2f(camera_pos.x, camera_pos.y);
+    float scale = 10000 / sqrtf(powf(camera_pos.x, 2) + powf(camera_pos.y, 2));
+
+    Vector3 inverse_axis = Vector3MultiplyValue(Vector3AddValue(axis, -1), -1);
+    Vector3 opposite_cam = Vector3MultiplyValue(cam.position, -scale);
+    Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), pos);
+
+    Matrix translation = MatrixTranslate(current_axis.x, current_axis.y, current_axis.z);
+    Matrix rotation = MatrixRotate(axis, angle);
+    Matrix matrix = MatrixMultiply(rotation, translation);
+
+    Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
+    Vector3 hit_point_offset = Vector3AddValue(hit_point, -offset_point);
+    Vector3 offset_current_axis = Vector3Multiply(axis, hit_point_offset);
+    Vector3 new_position = Vector3Add(pos, offset_current_axis);
+
+    return MatrixTranslate(new_position.x, new_position.y, new_position.z);
 }
 
 int main() {
@@ -197,7 +213,7 @@ int main() {
     selected.index = 1;
     selected.is_selected = true;
     selected.object = test_cube2;
-    selected.pos = get_matrix_translation(MatrixTranslate(-10.0f, 0.0f, 0.0f));
+    selected.pos = getMatrixTranslation(MatrixTranslate(-10.0f, 0.0f, 0.0f));
 
     while (!WindowShouldClose()) {
 
@@ -236,10 +252,43 @@ int main() {
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            selected.pos = get_matrix_translation(objects[selected.index].matrix);
+            selected.pos = getMatrixTranslation(objects[selected.index].matrix);
             xyz_control.x_ray.hit = false;
             xyz_control.y_ray.hit = false;
             xyz_control.z_ray.hit = false;
+        }
+
+        if (xyz_control.x_ray.hit) {
+            Vector2 camera_pos = {cam.position.z, cam.position.y};
+            Mesh cube = xyz_control.hidden_box;
+
+            Vector3 axis = {1, 0, 0};
+            float offset_point = xyz_control.x_ray.point.x;
+
+            Matrix new_position = move_object(cam, selected.pos, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
+        }
+
+        if (xyz_control.y_ray.hit) {
+            Vector2 camera_pos = {cam.position.x, cam.position.z};
+            Mesh cube = xyz_control.hidden_box;
+
+            Vector3 axis = {0, 1, 0};
+            float offset_point = xyz_control.y_ray.point.y;
+
+            Matrix new_position = move_object(cam, selected.pos, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
+        }
+
+        if (xyz_control.z_ray.hit) {
+            Vector2 camera_pos = {cam.position.y, cam.position.x};
+            Mesh cube = xyz_control.hidden_box;
+
+            Vector3 axis = {0, 0, 1};
+            float offset_point = xyz_control.z_ray.point.z;
+
+            Matrix new_position = move_object(cam, selected.pos, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
         }
 
         BeginDrawing();
@@ -254,7 +303,7 @@ int main() {
             DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
 
         if (selected.is_selected) {
-            edit_pos = get_matrix_translation(objects[selected.index].matrix);
+            edit_pos = getMatrixTranslation(objects[selected.index].matrix);
             edit = MOVE;
         }
         if (IsKeyDown(KEY_LEFT_CONTROL)) {
@@ -263,86 +312,6 @@ int main() {
         }
 
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-
-        if (xyz_control.x_ray.hit) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-            Object cube = xyz_control.hidden_box;
-            Vector3 pos = selected.pos;
-
-            Mesh mesh = cube.mesh;
-
-
-            float angleInRadians = atan2f(cam.position.z, cam.position.y);
-            float scale = 10000 / sqrtf(powf(cam.position.z, 2) + powf(cam.position.y, 2));
-
-            Matrix translation = MatrixTranslate(pos.x, -cam.position.y * scale + pos.y, -cam.position.z * scale + pos.z);
-
-            Vector3 axis = Vector3Normalize((Vector3){360, 0, 0});
-
-            Matrix rotation = MatrixRotate(axis, angleInRadians);
-
-            Matrix matrix = MatrixMultiply(rotation, translation);
-
-
-            float point = GetRayCollisionMesh(ray, mesh, matrix).point.x;
-            float point_offset = point + (selected.pos.x - xyz_control.x_ray.point.x);
-
-            objects[selected.index].matrix = MatrixTranslate(point_offset, pos.y, pos.z);
-        }
-
-        if (xyz_control.y_ray.hit) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-            Object cube = xyz_control.hidden_box;
-            Vector3 pos = selected.pos;
-
-            Mesh mesh = cube.mesh;
-
-
-            float angleInRadians = atan2f(cam.position.x, cam.position.z);
-
-            float scale = 10000 / sqrtf(powf(cam.position.x, 2) + powf(cam.position.z, 2));
-
-            Matrix translation = MatrixTranslate(-cam.position.x * scale + pos.x, pos.y, -cam.position.z * scale + pos.z);
-
-            Vector3 axis = Vector3Normalize((Vector3){0, 360, 0});
-
-            Matrix rotation = MatrixRotate(axis, angleInRadians);
-
-            Matrix matrix = MatrixMultiply(rotation, translation);
-
-            float point = GetRayCollisionMesh(ray, mesh, matrix).point.y;
-            float point_offset = point + (selected.pos.y - xyz_control.y_ray.point.y);
-
-            objects[selected.index].matrix = MatrixTranslate(pos.x, point_offset, pos.z);
-        }
-
-
-        if (xyz_control.z_ray.hit) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-            Object cube = xyz_control.hidden_box;
-            Vector3 pos = selected.pos;
-
-            Mesh mesh = cube.mesh;
-
-            float angleInRadians = atan2f(cam.position.y, cam.position.x);
-
-            float scale = 10000 / sqrtf(powf(cam.position.x, 2) + powf(cam.position.y, 2));
-
-            Matrix translation = MatrixTranslate(-cam.position.x * scale + pos.x, -cam.position.y * scale + pos.y, pos.z);
-
-            Vector3 axis = Vector3Normalize((Vector3){0, 0, 360});
-
-            Matrix rotation = MatrixRotate(axis, angleInRadians);
-
-            Matrix matrix = MatrixMultiply(rotation, translation);
-
-
-            float point = GetRayCollisionMesh(ray, mesh, matrix).point.z;
-            float point_offset = point + (selected.pos.z - xyz_control.z_ray.point.z);
-
-            objects[selected.index].matrix = MatrixTranslate(pos.x, pos.y, point_offset);
-        }
-
 
 
         EndMode3D();
