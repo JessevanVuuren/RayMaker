@@ -104,7 +104,17 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     DrawLine3D(target, newY, GetColor(0x00FF00FF));
     DrawLine3D(target, newZ, GetColor(0x0000FFFF));
     // #TODO: fix offset, made by my
-    xyz->x.matrix = MatrixTranslate(newX.x + 7.5f * .5f, newX.y, newX.z);
+
+    float angle = atan2f(cam.position.z, cam.position.y);
+
+    Matrix translation = MatrixTranslate(newX.x + 7.5f * .5f, newX.y, newX.z);
+    Matrix rotation = MatrixRotate((Vector3){1, 0, 0}, angle);
+    Matrix matrix = MatrixMultiply(rotation, translation);
+
+    xyz->x.matrix = matrix;
+
+
+    // xyz->x.matrix = MatrixTranslate(newX.x + 7.5f * .5f, newX.y, newX.z);
     xyz->y.matrix = MatrixTranslate(newY.x, newY.y - 7.5f * .5f, newY.z);
     xyz->z.matrix = MatrixTranslate(newZ.x, newZ.y, newZ.z + 7.5f * .5f);
 
@@ -116,7 +126,7 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
 void init_XYZ_controls(XYZcontrol *xyz) {
     Object hit_box_x;
     hit_box_x.id = 1;
-    hit_box_x.mesh = GenMeshCube(7.5f, 6.5f, 6.5f);
+    hit_box_x.mesh = GenMeshPlane(7.5f, .5f, 1, 1);
     hit_box_x.material = LoadMaterialDefault();
     hit_box_x.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF000055);
     hit_box_x.matrix = MatrixTranslate(7.5f / 2, 0.0f, 0.0f);
@@ -169,7 +179,7 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
     Matrix rotation = MatrixRotate(axis, angle);
     Matrix matrix = MatrixMultiply(rotation, translation);
 
-    
+
 
     Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
     Vector3 hit_point_offset = Vector3AddValue(hit_point, -offset_point);
@@ -240,7 +250,6 @@ int main() {
             CameraPitch(&cam, -mouseDelta.y * CAMERA_SPEED, true, true, false);
         }
 
-
         if (IsKeyPressed(KEY_ESCAPE)) {
             selected.is_selected = false;
         }
@@ -271,52 +280,14 @@ int main() {
         }
 
         if (xyz_control.x_ray.hit) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-
             Vector2 camera_pos = {cam.position.z, cam.position.y};
             Mesh cube = xyz_control.hidden_box;
-            Vector3 axis = {1, 0, 0};
 
+            Vector3 axis = {1, 0, 0};
             float offset_point = xyz_control.x_ray.point.x;
 
-
-            float angle = atan2f(camera_pos.x, camera_pos.y);
-            float scale = 10000 / sqrtf(powf(camera_pos.x, 2) + powf(camera_pos.y, 2));
-
-            Vector3 inverse_axis = Vector3MultiplyValue(Vector3AddValue(axis, -1), -1);
-            Vector3 opposite_cam = Vector3MultiplyValue(cam.position, -scale);
-            Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), selected.pos);
-
-            Matrix translation = MatrixTranslate(current_axis.x, current_axis.y, current_axis.z);
-            Matrix rotation = MatrixRotate(axis, angle);
-            Matrix matrix = MatrixMultiply(rotation, translation);
-
-            float dist_to_origin_angle = Vector3Distance(xyz_control.x_ray.point, selected.pos);
-            float dist_to_origin = selected.pos.x + 7.5f;
-            // TODO: fix
-            printf("%f\n", dist_to_origin_angle - dist_to_origin);
-
-
-
-            Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
-            Vector3 hit_point_offset = Vector3AddValue(hit_point, -offset_point);
-
-
-
-            Vector3 offset_current_axis = Vector3Multiply(axis, hit_point_offset);
-            Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
-
-            // move
-            objects[selected.index].matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
-
-            // Vector2 camera_pos = {cam.position.z, cam.position.y};
-            // Mesh cube = xyz_control.hidden_box;
-
-            // Vector3 axis = {1, 0, 0};
-            // float offset_point = xyz_control.x_ray.point.x;
-
-            // Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
-            // objects[selected.index].matrix = new_position;
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
         }
 
         // if (xyz_control.y_ray.hit) {
@@ -355,10 +326,6 @@ int main() {
         if (selected.is_selected) {
             edit_pos = getMatrixTranslation(objects[selected.index].matrix);
             edit = MOVE;
-        }
-        if (IsKeyDown(KEY_LEFT_CONTROL)) {
-            edit_pos = origin;
-            edit = NONE;
         }
 
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
