@@ -37,12 +37,15 @@ typedef struct {
 } Object;
 
 typedef struct {
-    Object x;
-    Object y;
-    Object z;
-    RayCollision x_ray;
-    RayCollision y_ray;
-    RayCollision z_ray;
+    Object hit_box;
+    RayCollision ray;
+    Vector3 axis;
+} AxisControl;
+
+typedef struct {
+    AxisControl x;
+    AxisControl y;
+    AxisControl z;
     Mesh hidden_box;
 } XYZcontrol;
 
@@ -71,56 +74,49 @@ void draw_graph() {
 
 void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontrol *xyz) {
     float magic_cam_dist_rec = .4 * EDIT_TOOLS_SCALE;
-    Vector3 newX = Vector3Add(target, (Vector3){0, 0, 0});
-    Vector3 newY = Vector3Add(target, (Vector3){0, EDIT_TOOLS_SCALE * magic_cam_dist_rec, 0});
-    Vector3 newZ = Vector3Add(target, (Vector3){0, 0, -EDIT_TOOLS_SCALE * magic_cam_dist_rec});
 
-    if (target.y == 0) {
-        target.y += 0.015f;
-        newX.y += 0.015f;
-        newZ.y += 0.015f;
-    }
+    Vector3 end_pos_x_axis = Vector3Add(target, (Vector3){7.5f, 0, 0});
+    Vector3 end_pos_y_axis = Vector3Add(target, (Vector3){0, 7.5f, 0});
+    Vector3 end_pos_z_axis = Vector3Add(target, (Vector3){0, 0, -7.5f});
 
-    float magic_radius_dist_rec = .017 * EDIT_TOOLS_SCALE;
-    float magic_height_dist_rec = .07 * EDIT_TOOLS_SCALE;
-    float magic_size_dist_rec = .03 * EDIT_TOOLS_SCALE;
-    if (mode == MOVE) {
-        DrawCylinderEx(newX, (Vector3){newX.x + EDIT_TOOLS_SCALE * magic_height_dist_rec, newX.y, newX.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0xFF0000FF));
-        DrawCylinderEx(newY, (Vector3){newY.x, newY.y + EDIT_TOOLS_SCALE * magic_height_dist_rec, newY.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x00FF00FF));
-        DrawCylinderEx(newZ, (Vector3){newZ.x, newZ.y, newZ.z - EDIT_TOOLS_SCALE * magic_height_dist_rec}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x0000FFFF));
-    };
-    if (mode == SCALE) {
-        DrawCube(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
-        DrawCube(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
-        DrawCube(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
-    };
-    if (mode == ROTATE) {
-        DrawSphere(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
-        DrawSphere(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
-        DrawSphere(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
-    };
+    // if (mode == MOVE) {
+    //     DrawCylinderEx(newX, (Vector3){newX.x + EDIT_TOOLS_SCALE * magic_height_dist_rec, newX.y, newX.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0xFF0000FF));
+    //     DrawCylinderEx(newY, (Vector3){newY.x, newY.y + EDIT_TOOLS_SCALE * magic_height_dist_rec, newY.z}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x00FF00FF));
+    //     DrawCylinderEx(newZ, (Vector3){newZ.x, newZ.y, newZ.z - EDIT_TOOLS_SCALE * magic_height_dist_rec}, EDIT_TOOLS_SCALE * magic_radius_dist_rec, 0, 30, GetColor(0x0000FFFF));
+    // };
+    // if (mode == SCALE) {
+    //     DrawCube(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
+    //     DrawCube(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
+    //     DrawCube(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
+    // };
+    // if (mode == ROTATE) {
+    //     DrawSphere(newX, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0xFF0000FF));
+    //     DrawSphere(newY, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x00FF00FF));
+    //     DrawSphere(newZ, EDIT_TOOLS_SCALE * magic_size_dist_rec, GetColor(0x0000FFFF));
+    // };
 
-    DrawLine3D(target, newX, GetColor(0xFF0000FF));
-    DrawLine3D(target, newY, GetColor(0x00FF00FF));
-    DrawLine3D(target, newZ, GetColor(0x0000FFFF));
-    // #TODO: fix offset, made by my
-
-    float angle = atan2f(cam.position.z, cam.position.y);
-
-    Matrix translation = MatrixTranslate(newX.x + 7.5f * .5f, newX.y, newX.z);
-    Matrix rotation = MatrixRotate((Vector3){1, 0, 0}, angle);
-    Matrix matrix = MatrixMultiply(rotation, translation);
-
-    xyz->x.matrix = matrix;
+    DrawLine3D(target, end_pos_x_axis, GetColor(0xFF0000FF));
+    DrawLine3D(target, end_pos_y_axis, GetColor(0x00FF00FF));
+    DrawLine3D(target, end_pos_z_axis, GetColor(0x0000FFFF));
 
 
-    // xyz->x.matrix = MatrixTranslate(newX.x + 7.5f * .5f, newX.y, newX.z);
-    xyz->y.matrix = MatrixTranslate(newY.x, newY.y - 7.5f * .5f, newY.z);
-    xyz->z.matrix = MatrixTranslate(newZ.x, newZ.y, newZ.z + 7.5f * .5f);
+    float angle_x = atan2f(cam.position.z, cam.position.y);
+    end_pos_x_axis.x -= 7.5f * .5f;
+    xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
 
-    DrawMesh(xyz->x.mesh, xyz->x.material, xyz->x.matrix);
-    DrawMesh(xyz->y.mesh, xyz->y.material, xyz->y.matrix);
-    DrawMesh(xyz->z.mesh, xyz->z.material, xyz->z.matrix);
+    float angle_y = atan2f(cam.position.x, cam.position.z);
+    end_pos_y_axis.y -= 7.5f * .5f;
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(angle_y), Vector3Translate(end_pos_y_axis));
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(90 * DEG2RAD), xyz->y.hit_box.matrix);
+
+
+    float angle_z = atan2f(cam.position.y, cam.position.x);
+    end_pos_z_axis.z += 7.5f * .5f;
+    xyz->z.hit_box.matrix = MatrixMultiply(MatrixRotateZ(angle_z), Vector3Translate(end_pos_z_axis));
+
+    DrawMesh(xyz->x.hit_box.mesh, xyz->x.hit_box.material, xyz->x.hit_box.matrix);
+    DrawMesh(xyz->y.hit_box.mesh, xyz->y.hit_box.material, xyz->y.hit_box.matrix);
+    DrawMesh(xyz->z.hit_box.mesh, xyz->z.hit_box.material, xyz->z.hit_box.matrix);
 }
 
 void init_XYZ_controls(XYZcontrol *xyz) {
@@ -129,30 +125,32 @@ void init_XYZ_controls(XYZcontrol *xyz) {
     hit_box_x.mesh = GenMeshPlane(7.5f, .5f, 1, 1);
     hit_box_x.material = LoadMaterialDefault();
     hit_box_x.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF000055);
-    hit_box_x.matrix = MatrixTranslate(7.5f / 2, 0.0f, 0.0f);
 
     Object hit_box_y;
     hit_box_y.id = 1;
-    hit_box_y.mesh = GenMeshCube(.5f, 7.5f, .5f);
+    hit_box_y.mesh = GenMeshPlane(7.5f, .5f, 1, 1);
     hit_box_y.material = LoadMaterialDefault();
     hit_box_y.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF0055);
-    hit_box_y.matrix = MatrixTranslate(0.0f, 7.5f / 2, 0.0f);
 
     Object hit_box_z;
     hit_box_z.id = 1;
-    hit_box_z.mesh = GenMeshCube(.5f, .5f, 7.5f);
+    hit_box_z.mesh = GenMeshPlane(.5f, 7.5f, 1, 1);
     hit_box_z.material = LoadMaterialDefault();
     hit_box_z.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FF55);
-    hit_box_z.matrix = MatrixTranslate(0.0f, 0.0f, -7.5f / 2);
-
-    xyz->x_ray.hit = false;
-    xyz->y_ray.hit = false;
-    xyz->z_ray.hit = false;
 
     xyz->hidden_box = GenMeshCube(20000, 20000, 20000);
-    xyz->x = hit_box_x;
-    xyz->y = hit_box_y;
-    xyz->z = hit_box_z;
+
+    xyz->x.ray.hit = false;
+    xyz->y.ray.hit = false;
+    xyz->z.ray.hit = false;
+
+    xyz->x.axis = (Vector3){1, 0, 0};
+    xyz->y.axis = (Vector3){0, 1, 0};
+    xyz->z.axis = (Vector3){0, 0, 1};
+
+    xyz->x.hit_box = hit_box_x;
+    xyz->y.hit_box = hit_box_y;
+    xyz->z.hit_box = hit_box_z;
 }
 
 
@@ -226,7 +224,7 @@ int main() {
     test_cube2.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
     test_cube2.material = LoadMaterialDefault();
     test_cube2.material.maps[MATERIAL_MAP_DIFFUSE].color = RED;
-    test_cube2.matrix = MatrixTranslate(-10.0f, 0.0f, 0.0f);
+    test_cube2.matrix = MatrixTranslate(0.0f, 0.0f, 0.0f);
 
     arrput(objects, test_cube1);
     arrput(objects, test_cube2);
@@ -236,7 +234,7 @@ int main() {
     selected.index = 1;
     selected.is_selected = true;
     selected.object = test_cube2;
-    selected.pos = getMatrixTranslation(MatrixTranslate(-10.0f, 0.0f, 0.0f));
+    selected.pos = getMatrixTranslation(MatrixTranslate(0.0f, 0.0f, 0.0f));
 
     while (!WindowShouldClose()) {
 
@@ -262,9 +260,9 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
-            xyz_control.x_ray = GetRayCollisionMesh(ray, xyz_control.x.mesh, xyz_control.x.matrix);
-            xyz_control.y_ray = GetRayCollisionMesh(ray, xyz_control.y.mesh, xyz_control.y.matrix);
-            xyz_control.z_ray = GetRayCollisionMesh(ray, xyz_control.z.mesh, xyz_control.z.matrix);
+            xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
+            xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
+            xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
 
             for (int i = 0; i < arrlen(objects); i++) {
                 RayCollision box = GetRayCollisionMesh(ray, objects[i].mesh, objects[i].matrix);
@@ -274,43 +272,43 @@ int main() {
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             selected = set_selected(objects[selected.index], selected.index);
-            xyz_control.x_ray.hit = false;
-            xyz_control.y_ray.hit = false;
-            xyz_control.z_ray.hit = false;
+            xyz_control.x.ray.hit = false;
+            xyz_control.y.ray.hit = false;
+            xyz_control.z.ray.hit = false;
         }
 
-        if (xyz_control.x_ray.hit) {
+        if (xyz_control.x.ray.hit) {
             Vector2 camera_pos = {cam.position.z, cam.position.y};
             Mesh cube = xyz_control.hidden_box;
 
             Vector3 axis = {1, 0, 0};
-            float offset_point = xyz_control.x_ray.point.x;
+            float offset_point = xyz_control.x.ray.point.x;
 
             Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
             objects[selected.index].matrix = new_position;
         }
 
-        // if (xyz_control.y_ray.hit) {
-        //     Vector2 camera_pos = {cam.position.x, cam.position.z};
-        //     Mesh cube = xyz_control.hidden_box;
+        if (xyz_control.y.ray.hit) {
+            Vector2 camera_pos = {cam.position.x, cam.position.z};
+            Mesh cube = xyz_control.hidden_box;
 
-        //     Vector3 axis = {0, 1, 0};
-        //     float offset_point = xyz_control.y_ray.point.y;
+            Vector3 axis = {0, 1, 0};
+            float offset_point = xyz_control.y.ray.point.y;
 
-        //     Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
-        //     objects[selected.index].matrix = new_position;
-        // }
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
+        }
 
-        // if (xyz_control.z_ray.hit) {
-        //     Vector2 camera_pos = {cam.position.y, cam.position.x};
-        //     Mesh cube = xyz_control.hidden_box;
+        if (xyz_control.z.ray.hit) {
+            Vector2 camera_pos = {cam.position.y, cam.position.x};
+            Mesh cube = xyz_control.hidden_box;
 
-        //     Vector3 axis = {0, 0, 1};
-        //     float offset_point = xyz_control.z_ray.point.z;
+            Vector3 axis = {0, 0, 1};
+            float offset_point = xyz_control.z.ray.point.z;
 
-        //     Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
-        //     objects[selected.index].matrix = new_position;
-        // }
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            objects[selected.index].matrix = new_position;
+        }
 
         BeginDrawing();
         BeginMode3D(cam);

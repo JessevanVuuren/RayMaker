@@ -8,6 +8,10 @@ Vector3 Vector3MultiplyValue(Vector3 v, float multiply)
     return result;
 }
 
+Matrix Vector3Translate(Vector3 pos) {
+    return MatrixTranslate(pos.x, pos.y, pos.z);
+}
+
 Vector3 getMatrixTranslation(Matrix mat) {
     Vector3 translation;
     translation.x = mat.m12;
