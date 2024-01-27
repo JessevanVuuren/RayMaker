@@ -101,18 +101,18 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
 
 
     float angle_x = atan2f(cam.position.z, cam.position.y);
-    end_pos_x_axis.x -= 7.5f * .5f;
-    xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
-
-    float angle_y = atan2f(cam.position.z, cam.position.x);
-    end_pos_y_axis.y -= 7.5f * .5f;
-    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(-angle_y), Vector3Translate(end_pos_y_axis));
-    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
-
-
     float angle_z = atan2f(cam.position.x, cam.position.y);
+    float angle_y = atan2f(cam.position.z, cam.position.x);
+
+    end_pos_x_axis.x -= 7.5f * .5f;
+    end_pos_y_axis.y -= 7.5f * .5f;
     end_pos_z_axis.z += 7.5f * .5f;
+
+
+    xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(-angle_y), Vector3Translate(end_pos_y_axis));
     xyz->z.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-angle_z), Vector3Translate(end_pos_z_axis));
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 
 
     DrawMesh(xyz->x.hit_box.mesh, xyz->x.hit_box.material, xyz->x.hit_box.matrix);
@@ -164,41 +164,44 @@ Selected set_selected(Object object, int index) {
     return selected;
 }
 
-Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos, Vector3 axis, float offset_point) {
+Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, enum EditMode mode) {
     Ray ray = GetMouseRay(GetMousePosition(), cam);
 
     float angle = atan2f(camera_pos.x, camera_pos.y);
     float scale = 10000 / sqrtf(powf(camera_pos.x, 2) + powf(camera_pos.y, 2));
 
-    Vector3 inverse_axis = Vector3MultiplyValue(Vector3AddValue(axis, -1), -1);
+    Vector3 inverse_axis = Vector3MultiplyValue(Vector3AddValue(xyz.axis, -1), -1);
     Vector3 opposite_cam = Vector3MultiplyValue(cam.position, -scale);
     Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), selected.pos);
 
     Matrix translation = MatrixTranslate(current_axis.x, current_axis.y, current_axis.z);
-    Matrix rotation = MatrixRotate(axis, angle);
+    Matrix rotation = MatrixRotate(xyz.axis, angle);
     Matrix matrix = MatrixMultiply(rotation, translation);
 
 
 
     Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
-    Vector3 hit_point_offset = Vector3AddValue(hit_point, -offset_point);
-    Vector3 offset_current_axis = Vector3Multiply(axis, hit_point_offset);
-    Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
+    Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
+    Vector3 offset_current_axis = Vector3Multiply(xyz.axis, hit_point_offset);
 
-    // move
-    return MatrixTranslate(new_position.x, new_position.y, new_position.z);
+    Matrix manipilated_matrix;
+    if (mode == MOVE) {
+        Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
+        manipilated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
+    }
+    if (mode == ROTATE) {
 
+    }
+    if (mode == SCALE) {
+      offset_current_axis.z = -offset_current_axis.z;
+      Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
+      Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
+      Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
 
-    // scale
+      manipilated_matrix = MatrixMultiply(matrix_scaled_up, selected.object.matrix);
+    }
 
-    // Vector3 scale_up = {new_position.x, new_position.y, -new_position.z};
-    // Vector3 minus_position = Vector3Subtract(scale_up, selected.pos);
-    // Vector3 current_axis_scale = Vector3Multiply(minus_position, axis);
-    // printf("XYZ: %f, %f, %f\n", current_axis_scale.x, current_axis_scale.y, current_axis_scale.z);
-    // Vector3 add_base_one = Vector3AddValue((Vector3){0,0,0}, 1);
-    // Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-
-    // return MatrixMultiply(matrix_scaled_up, selected.object.matrix);
+    return manipilated_matrix;
 }
 
 int main() {
@@ -282,10 +285,7 @@ int main() {
             Vector2 camera_pos = {cam.position.z, cam.position.y};
             Mesh cube = xyz_control.hidden_box;
 
-            Vector3 axis = {1, 0, 0};
-            float offset_point = xyz_control.x.ray.point.x;
-
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.x);
             objects[selected.index].matrix = new_position;
         }
 
@@ -293,10 +293,7 @@ int main() {
             Vector2 camera_pos = {cam.position.x, cam.position.z};
             Mesh cube = xyz_control.hidden_box;
 
-            Vector3 axis = {0, 1, 0};
-            float offset_point = xyz_control.y.ray.point.y;
-
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.y);
             objects[selected.index].matrix = new_position;
         }
 
@@ -304,10 +301,7 @@ int main() {
             Vector2 camera_pos = {cam.position.y, cam.position.x};
             Mesh cube = xyz_control.hidden_box;
 
-            Vector3 axis = {0, 0, 1};
-            float offset_point = xyz_control.z.ray.point.z;
-
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, axis, offset_point);
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.z);
             objects[selected.index].matrix = new_position;
         }
 
@@ -328,7 +322,6 @@ int main() {
         }
 
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-
 
         EndMode3D();
         DrawFPS(0, 0);
