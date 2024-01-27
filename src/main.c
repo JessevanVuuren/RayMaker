@@ -131,7 +131,6 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 }
 
-
 Selected set_selected(Object object, int index) {
     Selected selected;
     selected.object = object;
@@ -282,34 +281,36 @@ int main() {
         }
 
         BeginTextureMode(world_render);
-            ClearBackground(GetColor(0x181818FF));
-            BeginMode3D(cam);
-                draw_graph();
+        ClearBackground(GetColor(0x181818FF));
 
-                Vector3 edit_pos = origin;
-                enum EditMode edit = NONE;
+        BeginMode3D(cam);
+        draw_graph();
 
-                for (int i = 0; i < arrlen(objects); i++)
-                    DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+        Vector3 edit_pos = origin;
+        enum EditMode edit = NONE;
 
-                if (selected.is_selected) {
-                    edit_pos = getMatrixTranslation(objects[selected.index].matrix);
-                    edit = MOVE;
-                }
-            EndMode3D();
+        for (int i = 0; i < arrlen(objects); i++)
+            DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+
+        if (selected.is_selected) {
+            edit_pos = getMatrixTranslation(objects[selected.index].matrix);
+            edit = MOVE;
+        }
+        EndMode3D();
+        DrawFPS(10, 10);
         EndTextureMode();
 
         BeginTextureMode(xyz_render);
-            BeginMode3D(cam);    
-                ClearBackground(GetColor(0x00000000));
-                draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-            EndMode3D();
+        BeginMode3D(cam);
+        ClearBackground(GetColor(0x00000000));
+        draw_xyz_control(edit_pos, edit, cam, &xyz_control);
+        EndMode3D();
         EndTextureMode();
 
         BeginDrawing();
-            ClearBackground(GetColor(0x181818FF));
-            DrawTextureRec(world_render.texture, (Rectangle){0, 0, world_render.texture.width, -world_render.texture.height}, (Vector2){0, 0}, WHITE);
-            DrawTextureRec(xyz_render.texture, (Rectangle){0, 0, xyz_render.texture.width, -xyz_render.texture.height}, (Vector2){0, 0}, WHITE);
+        ClearBackground(GetColor(0x181818FF));
+        DrawTextureRec(world_render.texture, (Rectangle){0, 0, world_render.texture.width, -world_render.texture.height}, (Vector2){0, 0}, WHITE);
+        DrawTextureRec(xyz_render.texture, (Rectangle){0, 0, xyz_render.texture.width, -xyz_render.texture.height}, (Vector2){0, 0}, WHITE);
         EndDrawing();
     }
 
