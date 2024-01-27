@@ -104,15 +104,16 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     end_pos_x_axis.x -= 7.5f * .5f;
     xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
 
-    float angle_y = atan2f(cam.position.x, cam.position.z);
+    float angle_y = atan2f(cam.position.z, cam.position.x);
     end_pos_y_axis.y -= 7.5f * .5f;
-    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(angle_y), Vector3Translate(end_pos_y_axis));
-    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(90 * DEG2RAD), xyz->y.hit_box.matrix);
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(-angle_y), Vector3Translate(end_pos_y_axis));
+    xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 
 
-    float angle_z = atan2f(cam.position.y, cam.position.x);
+    float angle_z = atan2f(cam.position.x, cam.position.y);
     end_pos_z_axis.z += 7.5f * .5f;
-    xyz->z.hit_box.matrix = MatrixMultiply(MatrixRotateZ(angle_z), Vector3Translate(end_pos_z_axis));
+    xyz->z.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-angle_z), Vector3Translate(end_pos_z_axis));
+
 
     DrawMesh(xyz->x.hit_box.mesh, xyz->x.hit_box.material, xyz->x.hit_box.matrix);
     DrawMesh(xyz->y.hit_box.mesh, xyz->y.hit_box.material, xyz->y.hit_box.matrix);
