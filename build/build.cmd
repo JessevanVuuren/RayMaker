@@ -1,1 +1,1 @@
-gcc -I./lib/raylib/ -I./include/ -I./lib/stb/ -L./lib/raylib/ -L./lib/stb/ ./src/main.c -o .\build\RayMaker -lraylib -lopengl32 -lgdi32 -pthread -lwinmm -Wall && .\build\RayMaker.exe
+gcc -I./lib/raylib/ -I./include/ -I./lib/stb/ -L./lib/raylib/ -L./lib/stb/ ./src/main.c -o .\build\RayMaker -lraylib -lopengl32 -lgdi32 -pthread -lwinmm -Wall && cd build && RayMaker.exe

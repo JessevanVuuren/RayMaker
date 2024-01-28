@@ -29,15 +29,27 @@ enum EditMode { MOVE,
 
 };
 
+
+typedef struct {
+    int id;
+    float angle;
+    Model model;
+    Vector3 pos;
+    Vector3 axis;
+    Vector3 scale;
+    Texture2D texture;
+} Object;
+
 typedef struct {
     int id;
     Mesh mesh;
     Matrix matrix;
     Material material;
-} Object;
+} HitObject;
+
 
 typedef struct {
-    Object hit_box;
+    HitObject hit_box;
     RayCollision ray;
     Vector3 axis;
     Vector3 rotation_axis;
@@ -137,12 +149,12 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 }
 
-Selected set_selected(Object object, int index) {
+Selected update_selected(Object object, int index, bool is_selected) {
     Selected selected;
     selected.object = object;
-    selected.pos = getMatrixTranslation(object.matrix);
+    selected.pos = getMatrixPosition(object.model.transform);
     selected.index = index;
-    selected.is_selected = true;
+    selected.is_selected = is_selected;
     return selected;
 }
 
@@ -171,31 +183,15 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
     Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
     Vector3 offset_current_axis = Vector3Multiply(xyz.axis, hit_point_offset);
 
-    Matrix manipulated_matrix = selected.object.matrix;
+    Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
+    return MatrixTranslate(new_position.x, new_position.y, new_position.z);
+}
 
-    if (mode == MOVE) {
-        Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
-        manipulated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
-    }
 
-    if (mode == ROTATE) {
-        float rotate_angle = Vector3Angle(xyz.ray.point, hit_point);
-        Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
-        if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
-        printf("%f\n", rotate_angle);
-        Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
-        manipulated_matrix = MatrixMultiply(selected.object.matrix, rotate);
-    }
-
-    if (mode == SCALE) {
-        offset_current_axis.z = -offset_current_axis.z;
-        Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
-        Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
-        Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-        manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected.object.matrix);
-    }
-
-    return manipulated_matrix;
+void draw_model(Object o) {
+    Vector3 postion = getMatrixPosition(o.model.transform);
+    DrawModel(o.model, o.pos, 1, WHITE);
+    DrawBoundingBox(GetModelBoundingBox(o.model), GREEN);
 }
 
 int main() {
@@ -209,29 +205,18 @@ int main() {
 
     XYZcontrol xyz_control = init_XYZ_controls();
 
-    Object test_cube1;
-    test_cube1.id = 1;
-    test_cube1.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
-    test_cube1.material = LoadMaterialDefault();
-    test_cube1.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x919191FF);
-    test_cube1.matrix = MatrixTranslate(10.0f, 0.0f, 0.0f);
+    Object model1;
+    model1.id = 1;
+    model1.scale = Vector3One();
+    model1.pos = (Vector3){0, 0, 0};
+    model1.angle = 0;
+    model1.model = LoadModel("resources/models/church.obj");
+    model1.texture = LoadTexture("resources/models/church_diffuse.png");
+    model1.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = model1.texture;
 
-    Object test_cube2;
-    test_cube2.id = 2;
-    test_cube2.mesh = GenMeshCube(1.0f, 1.0f, 1.0f);
-    test_cube2.material = LoadMaterialDefault();
-    test_cube2.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x919191FF);
-    test_cube2.matrix = MatrixTranslate(0.0f, 0.0f, 0.0f);
-
-    arrput(objects, test_cube1);
-    arrput(objects, test_cube2);
+    arrput(objects, model1);
 
     Selected selected = {0};
-
-    selected.index = 1;
-    selected.is_selected = true;
-    selected.object = test_cube2;
-    selected.pos = getMatrixTranslation(MatrixTranslate(0.0f, 0.0f, 0.0f));
 
     RenderTexture2D world_render = LoadRenderTexture(WIDTH, HEIGHT);
     RenderTexture2D xyz_render = LoadRenderTexture(WIDTH, HEIGHT);
@@ -241,7 +226,7 @@ int main() {
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
 
             CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
@@ -264,20 +249,19 @@ int main() {
             xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
             xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
 
+            bool hit = false;
             for (int i = 0; i < arrlen(objects); i++) {
-                RayCollision box = GetRayCollisionMesh(ray, objects[i].mesh, objects[i].matrix);
-                if (box.hit) selected = set_selected(objects[i], i);
+                RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
+                if (box.hit) selected = update_selected(objects[i], i, true);
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            selected = set_selected(objects[selected.index], selected.index);
+            selected = update_selected(objects[selected.index], selected.index, selected.is_selected);
             xyz_control.x.ray.hit = false;
             xyz_control.y.ray.hit = false;
             xyz_control.z.ray.hit = false;
         }
-
-
 
         BeginTextureMode(world_render);
         ClearBackground(GetColor(0x181818FF));
@@ -293,7 +277,7 @@ int main() {
             Mesh cube = xyz_control.hidden_box;
 
             Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.x, (enum EditMode)ROTATE);
-            objects[selected.index].matrix = new_position;
+            objects[selected.index].model.transform = new_position;
         }
 
         if (xyz_control.y.ray.hit) {
@@ -301,7 +285,7 @@ int main() {
             Mesh cube = xyz_control.hidden_box;
 
             Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.y, (enum EditMode)ROTATE);
-            objects[selected.index].matrix = new_position;
+            objects[selected.index].model.transform = new_position;
         }
 
         if (xyz_control.z.ray.hit) {
@@ -309,15 +293,17 @@ int main() {
             Mesh cube = xyz_control.hidden_box;
 
             Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.z, (enum EditMode)ROTATE);
-            objects[selected.index].matrix = new_position;
+            objects[selected.index].model.transform = new_position;
         }
 
-        for (int i = 0; i < arrlen(objects); i++)
-            DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
+        for (int i = 0; i < arrlen(objects); i++) {
+            draw_model(objects[i]);
+        }
+
 
         if (selected.is_selected) {
-            edit_pos = getMatrixTranslation(objects[selected.index].matrix);
-            edit = ROTATE;
+            edit_pos = getMatrixPosition(objects[selected.index].model.transform);
+            edit = MOVE;
         }
         EndMode3D();
         DrawFPS(10, 10);
@@ -326,6 +312,7 @@ int main() {
         BeginTextureMode(xyz_render);
         BeginMode3D(cam);
         ClearBackground(GetColor(0x00000000));
+        
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
         EndMode3D();
         EndTextureMode();
