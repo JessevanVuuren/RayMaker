@@ -40,6 +40,7 @@ typedef struct {
     Object hit_box;
     RayCollision ray;
     Vector3 axis;
+    Vector3 rotation_axis;
 } AxisControl;
 
 typedef struct {
@@ -47,6 +48,7 @@ typedef struct {
     AxisControl y;
     AxisControl z;
     Mesh hidden_box;
+    Mesh rotation_plane;
 } XYZcontrol;
 
 typedef struct {
@@ -83,6 +85,10 @@ XYZcontrol init_XYZ_controls() {
     xyz.x.axis = (Vector3){1, 0, 0};
     xyz.y.axis = (Vector3){0, 1, 0};
     xyz.z.axis = (Vector3){0, 0, 1};
+
+    xyz.x.rotation_axis = (Vector3){0, 1, 0};
+    xyz.y.rotation_axis = (Vector3){0, 0, 1};
+    xyz.z.rotation_axis = (Vector3){1, 0, 0};
 
     xyz.x.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
     xyz.y.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
@@ -150,27 +156,42 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
     Vector3 opposite_cam = Vector3MultiplyValue(cam.position, -scale);
     Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), selected.pos);
 
+
     Matrix translation = MatrixTranslate(current_axis.x, current_axis.y, current_axis.z);
     Matrix rotation = MatrixRotate(xyz.axis, angle);
     Matrix matrix = MatrixMultiply(rotation, translation);
+
+    if (mode == ROTATE) {
+        Vector3 hidden_rotation_cube = Vector3Multiply((Vector3){-10000, -10000, 10000}, xyz.rotation_axis);
+        Vector3 ww = Vector3Add(selected.pos, hidden_rotation_cube);
+        matrix = Vector3Translate(ww);
+    }
 
     Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
     Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
     Vector3 offset_current_axis = Vector3Multiply(xyz.axis, hit_point_offset);
 
-    Matrix manipulated_matrix;
+    Matrix manipulated_matrix = selected.object.matrix;
+
     if (mode == MOVE) {
         Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
         manipulated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
     }
+
     if (mode == ROTATE) {
+        float rotate_angle = Vector3Angle(xyz.ray.point, hit_point);
+        Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
+        if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
+        printf("%f\n", rotate_angle);
+        Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
+        manipulated_matrix = MatrixMultiply(selected.object.matrix, rotate);
     }
+
     if (mode == SCALE) {
         offset_current_axis.z = -offset_current_axis.z;
         Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
         Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
         Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-
         manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected.object.matrix);
     }
 
@@ -256,29 +277,7 @@ int main() {
             xyz_control.z.ray.hit = false;
         }
 
-        if (xyz_control.x.ray.hit) {
-            Vector2 camera_pos = {cam.position.z, cam.position.y};
-            Mesh cube = xyz_control.hidden_box;
 
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.x, (enum EditMode)MOVE);
-            objects[selected.index].matrix = new_position;
-        }
-
-        if (xyz_control.y.ray.hit) {
-            Vector2 camera_pos = {cam.position.x, cam.position.z};
-            Mesh cube = xyz_control.hidden_box;
-
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.y, (enum EditMode)MOVE);
-            objects[selected.index].matrix = new_position;
-        }
-
-        if (xyz_control.z.ray.hit) {
-            Vector2 camera_pos = {cam.position.y, cam.position.x};
-            Mesh cube = xyz_control.hidden_box;
-
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.z, (enum EditMode)MOVE);
-            objects[selected.index].matrix = new_position;
-        }
 
         BeginTextureMode(world_render);
         ClearBackground(GetColor(0x181818FF));
@@ -289,12 +288,36 @@ int main() {
         Vector3 edit_pos = origin;
         enum EditMode edit = NONE;
 
+        if (xyz_control.x.ray.hit) {
+            Vector2 camera_pos = {cam.position.z, cam.position.y};
+            Mesh cube = xyz_control.hidden_box;
+
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.x, (enum EditMode)ROTATE);
+            objects[selected.index].matrix = new_position;
+        }
+
+        if (xyz_control.y.ray.hit) {
+            Vector2 camera_pos = {cam.position.x, cam.position.z};
+            Mesh cube = xyz_control.hidden_box;
+
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.y, (enum EditMode)ROTATE);
+            objects[selected.index].matrix = new_position;
+        }
+
+        if (xyz_control.z.ray.hit) {
+            Vector2 camera_pos = {cam.position.y, cam.position.x};
+            Mesh cube = xyz_control.hidden_box;
+
+            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.z, (enum EditMode)ROTATE);
+            objects[selected.index].matrix = new_position;
+        }
+
         for (int i = 0; i < arrlen(objects); i++)
             DrawMesh(objects[i].mesh, objects[i].material, objects[i].matrix);
 
         if (selected.is_selected) {
             edit_pos = getMatrixTranslation(objects[selected.index].matrix);
-            edit = MOVE;
+            edit = ROTATE;
         }
         EndMode3D();
         DrawFPS(10, 10);
