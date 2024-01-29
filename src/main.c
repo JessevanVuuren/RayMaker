@@ -183,8 +183,27 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
     Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
     Vector3 offset_current_axis = Vector3Multiply(xyz.axis, hit_point_offset);
 
-    Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
-    return MatrixTranslate(new_position.x, new_position.y, new_position.z);
+    Matrix manipulated_matrix;
+    if (mode == MOVE) {
+        Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
+        manipulated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
+    }
+    if (mode == ROTATE) {
+        float rotate_angle = Vector3Angle(xyz.ray.point, hit_point);
+        Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
+        if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
+        Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
+        manipulated_matrix = MatrixMultiply(selected.object.model.transform, rotate);
+    }
+
+    if (mode == SCALE) {
+        offset_current_axis.z = -offset_current_axis.z;
+        Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
+        Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
+        Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
+        manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected.object.model.transform);
+    }
+    return manipulated_matrix;
 }
 
 
@@ -226,7 +245,7 @@ int main() {
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
             Vector2 mouseDelta = GetMouseDelta();
 
             CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
@@ -303,7 +322,7 @@ int main() {
 
         if (selected.is_selected) {
             edit_pos = getMatrixPosition(objects[selected.index].model.transform);
-            edit = MOVE;
+            edit = ROTATE;
         }
         EndMode3D();
         DrawFPS(10, 10);
