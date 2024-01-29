@@ -50,6 +50,7 @@ typedef struct {
 
 typedef struct {
     HitObject hit_box;
+    HitObject rotation_box;
     RayCollision ray;
     Vector3 axis;
     Vector3 rotation_axis;
@@ -105,7 +106,14 @@ XYZcontrol init_XYZ_controls() {
     xyz.x.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
     xyz.y.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
     xyz.z.hit_box.mesh = GenMeshPlane(.6, 7.5, 1, 1);
-
+    
+    xyz.x.rotation_box.material = LoadMaterialDefault();
+    xyz.x.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
+    
+    xyz.x.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
+    xyz.y.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
+    xyz.z.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
+    
     return xyz;
 }
 
@@ -125,9 +133,9 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
         DrawCube(end_pos_z_axis, .65, .65, .65, GetColor(0x0000FFFF));
     };
     if (mode == ROTATE) {
-        DrawSphere(end_pos_x_axis, .5, GetColor(0xFF0000FF));
-        DrawSphere(end_pos_y_axis, .5, GetColor(0x00FF00FF));
-        DrawSphere(end_pos_z_axis, .5, GetColor(0x0000FFFF));
+        xyz->x.rotation_box.matrix = MatrixMultiply(MatrixRotateX(90 * DEG2RAD), Vector3Translate(target));
+
+        DrawMesh(xyz->x.rotation_box.mesh, xyz->x.rotation_box.material, xyz->x.rotation_box.matrix);
     };
 
     DrawLine3D(target, end_pos_x_axis, GetColor(0xFF0000FF));
@@ -142,6 +150,8 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     end_pos_x_axis.x -= 7.5f * .5f;
     end_pos_y_axis.y -= 7.5f * .5f;
     end_pos_z_axis.z += 7.5f * .5f;
+
+    
 
     xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(-angle_y), Vector3Translate(end_pos_y_axis));
