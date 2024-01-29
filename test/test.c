@@ -57,108 +57,73 @@ void draw_model(Object o) {
     DrawBoundingBox(GetModelBoundingBox(o.model), GREEN);
 }
 
-Mesh CreateHollowCylinder(float outerRadius, float innerRadius, float height, int slices) {
+Mesh CreateTriangle(float height, float inner_radius, float outer_radius, int slices) {
     Mesh mesh = {0};
 
-    // Define the number of vertices and faces
-    int vertexCount = (slices + 1) * 2; // top and bottom, inner and outer
-    int triangleCount = slices * 2;     // top and bottom, inner and outer
-
-    // Initialize mesh data (vertices, normals, and texcoords)
-    mesh.vertices = (float *)malloc(vertexCount * 3 * sizeof(float));
-    mesh.texcoords = (float *)malloc(vertexCount * 2 * sizeof(float));
-    mesh.normals = (float *)malloc(vertexCount * 3 * sizeof(float));
-    mesh.indices = (unsigned short *)malloc(triangleCount * 3 * sizeof(unsigned short));
-
-    // for (int i = 0; i < mesh.vertexCount; i++) {
-    //     // Fill in vertices, normals, and texcoords
-    //     float x = cos(2 * PI * (i / mesh.vertexCount));
-    //     float z = cos(2 * PI * (i / mesh.vertexCount));
-
-    //     if (i > mesh.vertexCount / 2) {
-    //         mesh.vertices[i * 3 + 1] = 0;
-    //     } else {
-    //         mesh.vertices[i * 3 + 1] = 1;
-    //     }
-
-    //     mesh.vertices[i * 3] = x;
-    //     mesh.vertices[i * 3 + 2] = z;
-    //     // ...
-    // }
-
-    for (int i = 0; i < mesh.vertexCount; i++) {
-        // Calculate the angle for this vertex
-        float angle = 2 * PI * (float)i / mesh.vertexCount;
-
-        // Calculate x and z using cosine and sine functions
-        float x = cos(angle);
-        float z = sin(angle);
-
-        // Assign the y coordinate
-        float y;
-        if (i > mesh.vertexCount / 2) {
-            y = 0; // For the second half of the vertices
-        } else {
-            y = 1; // For the first half of the vertices
-        }
-
-        // Assign the calculated coordinates to the mesh vertices
-        mesh.vertices[i * 3] = x;     // x-coordinate
-        mesh.vertices[i * 3 + 1] = y; // y-coordinate
-        mesh.vertices[i * 3 + 2] = z; // z-coordinate
-
-        // If you need to fill in normals and texture coordinates, do it here
-        // ...
-    }
-
-    for (int i = 0; i < mesh.triangleCount; i++) {
-        mesh.indices[i + 0] = i + 0; // First vertex of the first triangle
-        mesh.indices[i + 1] = i + 1; // Second vertex of the first triangle
-        mesh.indices[i + 2] = i + 2; // Third vertex of the first triangle
-
-        mesh.indices[i + 3] = i + 2; // First vertex of the second triangle
-        mesh.indices[i + 4] = i + 3; // Second vertex of the second triangle
-        mesh.indices[i + 5] = i + 0; // Third vertex of the second triangle
-    }
-
-    return mesh;
-}
-
-Mesh CreateTriangle() {
-    Mesh mesh = {0};
-
-    mesh.vertexCount = 30;
-    mesh.triangleCount = 30;
+    mesh.vertexCount = slices * 4;
+    mesh.triangleCount = slices * 8;
 
     mesh.vertices = (float *)RL_MALLOC(mesh.vertexCount * 3 * sizeof(float));
     mesh.indices = (unsigned short *)RL_MALLOC(mesh.triangleCount * 3 * sizeof(unsigned short));
 
-    for (int i = 0; i < mesh.vertexCount / 2.0f; i++) {
-        float x = cosf(2 * PI * ((float)i / (mesh.vertexCount /2.0f))) * 10;
-        float z = sinf(2 * PI * ((float)i / (mesh.vertexCount /2.0f))) * 10;
+    for (int i = 0; i < slices; i++) {
+        float x = cosf(2 * PI * ((float)i / (slices)));
+        float z = sinf(2 * PI * ((float)i / (slices)));
 
-        mesh.vertices[i * 6 + 0] = x;
-        mesh.vertices[i * 6 + 1] = 0;
-        mesh.vertices[i * 6 + 2] = z;
+        mesh.vertices[i * 12 + 0] = x * outer_radius;
+        mesh.vertices[i * 12 + 1] = 0;
+        mesh.vertices[i * 12 + 2] = z * outer_radius;
 
-        mesh.vertices[i * 6 + 3] = x;
-        mesh.vertices[i * 6 + 4] = 10;
-        mesh.vertices[i * 6 + 5] = z;
+        mesh.vertices[i * 12 + 3] = x * outer_radius;
+        mesh.vertices[i * 12 + 4] = height;
+        mesh.vertices[i * 12 + 5] = z * outer_radius;
+
+        mesh.vertices[i * 12 + 6] = x * inner_radius;
+        mesh.vertices[i * 12 + 7] = 0;
+        mesh.vertices[i * 12 + 8] = z * inner_radius;
+
+        mesh.vertices[i * 12 + 9] = x * inner_radius;
+        mesh.vertices[i * 12 + 10] = height;
+        mesh.vertices[i * 12 + 11] = z * inner_radius;
     }
 
 
-    for (int i = 0; i < mesh.triangleCount /2.0f; i++)
-    {
-            mesh.indices[i * 6 + 0] = 0 + (i * 2);
-            mesh.indices[i * 6 + 1] = 1 + (i * 2);
-            mesh.indices[i * 6 + 2] = 2 + (i * 2);
+    int mod = slices * 4;
+    for (int i = 0; i < slices; i++) {
+        int step_size = 4 * i;
 
-            mesh.indices[i * 6 + 3] = 1 + (i * 2);
-            mesh.indices[i * 6 + 4] = 3 + (i * 2);
-            mesh.indices[i * 6 + 5] = 2 + (i * 2);
+        mesh.indices[i * 24 + 0] = (0 + step_size) % mod;
+        mesh.indices[i * 24 + 1] = (1 + step_size) % mod;
+        mesh.indices[i * 24 + 2] = (4 + step_size) % mod;
+
+        mesh.indices[i * 24 + 3] = (1 + step_size) % mod;
+        mesh.indices[i * 24 + 4] = (5 + step_size) % mod;
+        mesh.indices[i * 24 + 5] = (4 + step_size) % mod;
+
+        mesh.indices[i * 24 + 6] = (6 + step_size) % mod;
+        mesh.indices[i * 24 + 7] = (3 + step_size) % mod;
+        mesh.indices[i * 24 + 8] = (2 + step_size) % mod;
+
+        mesh.indices[i * 24 + 9] = (7 + step_size) % mod;
+        mesh.indices[i * 24 + 10] = (3 + step_size) % mod;
+        mesh.indices[i * 24 + 11] = (6 + step_size) % mod;
+
+        mesh.indices[i * 24 + 12] = (1 + step_size) % mod;
+        mesh.indices[i * 24 + 13] = (3 + step_size) % mod;
+        mesh.indices[i * 24 + 14] = (7 + step_size) % mod;
+
+        mesh.indices[i * 24 + 15] = (7 + step_size) % mod;
+        mesh.indices[i * 24 + 16] = (5 + step_size) % mod;
+        mesh.indices[i * 24 + 17] = (1 + step_size) % mod;
+
+        mesh.indices[i * 24 + 18] = (6 + step_size) % mod;
+        mesh.indices[i * 24 + 19] = (2 + step_size) % mod;
+        mesh.indices[i * 24 + 20] = (0 + step_size) % mod;
+
+        mesh.indices[i * 24 + 21] = (0 + step_size) % mod;
+        mesh.indices[i * 24 + 22] = (4 + step_size) % mod;
+        mesh.indices[i * 24 + 23] = (6 + step_size) % mod;
     }
-  
-
 
     UploadMesh(&mesh, false);
 
@@ -177,14 +142,14 @@ int main() {
 
     Material material = LoadMaterialDefault();
     material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
-    Mesh mesh = CreateTriangle();
+    Mesh mesh = CreateTriangle(1,1,1,1);
 
     while (!WindowShouldClose()) {
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
 
             CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
@@ -206,12 +171,13 @@ int main() {
         draw_graph();
 
         DrawMesh(mesh, material, MatrixTranslate(0, 0, 0));
+
+
         
-
-
         EndMode3D();
         DrawFPS(10, 10);
         EndDrawing();
     }
+    UnloadMesh(mesh);
     CloseWindow();
 }
