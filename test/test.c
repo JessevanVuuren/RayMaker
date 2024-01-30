@@ -6,7 +6,7 @@
 #include "raymath.h"
 #include "rcamera.h"
 
-#include "extramath.h"
+#include "extraray.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -142,7 +142,7 @@ int main() {
 
     Material material = LoadMaterialDefault();
     material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
-    Mesh mesh = CreateTriangle(1,1,1,1);
+    Mesh mesh = CreateTriangle(1,10.1f,10,10);
 
     while (!WindowShouldClose()) {
 

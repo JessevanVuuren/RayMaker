@@ -6,7 +6,7 @@
 #include "raymath.h"
 #include "rcamera.h"
 
-#include "extramath.h"
+#include "extraray.h"
 
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
@@ -35,9 +35,10 @@ typedef struct {
     float angle;
     Model model;
     Vector3 pos;
-    Vector3 axis;
     Vector3 scale;
     Texture2D texture;
+    Vector3 rotation_axis;
+    Vector3 current_rotation;
 } Object;
 
 typedef struct {
@@ -106,14 +107,20 @@ XYZcontrol init_XYZ_controls() {
     xyz.x.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
     xyz.y.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
     xyz.z.hit_box.mesh = GenMeshPlane(.6, 7.5, 1, 1);
-    
+
     xyz.x.rotation_box.material = LoadMaterialDefault();
     xyz.x.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
-    
-    xyz.x.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
-    xyz.y.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
-    xyz.z.rotation_box.mesh = GenMeshTorus(0.01f, 15, 5, 30);
-    
+
+    xyz.y.rotation_box.material = LoadMaterialDefault();
+    xyz.y.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF00FF);
+
+    xyz.z.rotation_box.material = LoadMaterialDefault();
+    xyz.z.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FFFF);
+
+    xyz.x.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
+    xyz.y.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
+    xyz.z.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
+
     return xyz;
 }
 
@@ -133,9 +140,9 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
         DrawCube(end_pos_z_axis, .65, .65, .65, GetColor(0x0000FFFF));
     };
     if (mode == ROTATE) {
-        xyz->x.rotation_box.matrix = MatrixMultiply(MatrixRotateX(90 * DEG2RAD), Vector3Translate(target));
-
         DrawMesh(xyz->x.rotation_box.mesh, xyz->x.rotation_box.material, xyz->x.rotation_box.matrix);
+        DrawMesh(xyz->y.rotation_box.mesh, xyz->y.rotation_box.material, xyz->y.rotation_box.matrix);
+        DrawMesh(xyz->z.rotation_box.mesh, xyz->z.rotation_box.material, xyz->z.rotation_box.matrix);
     };
 
     DrawLine3D(target, end_pos_x_axis, GetColor(0xFF0000FF));
@@ -151,7 +158,10 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     end_pos_y_axis.y -= 7.5f * .5f;
     end_pos_z_axis.z += 7.5f * .5f;
 
-    
+
+    xyz->x.rotation_box.matrix = Vector3Translate(target);
+    xyz->y.rotation_box.matrix = MatrixMultiply(MatrixRotateX(90 * DEG2RAD), Vector3Translate(target));
+    xyz->z.rotation_box.matrix = MatrixMultiply(MatrixRotateZ(90 * DEG2RAD), Vector3Translate(target));
 
     xyz->x.hit_box.matrix = MatrixMultiply(MatrixRotateX(angle_x), Vector3Translate(end_pos_x_axis));
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateY(-angle_y), Vector3Translate(end_pos_y_axis));
@@ -159,24 +169,33 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 }
 
-Selected update_selected(Object object, int index, bool is_selected) {
+Selected update_selected(Object object, int index, bool is_selected, Selected curr_selected) {
     Selected selected;
     selected.object = object;
+    selected.object.angle += object.angle;
+    selected.object.rotation_axis = object.rotation_axis;
     selected.pos = getMatrixPosition(object.model.transform);
     selected.index = index;
     selected.is_selected = is_selected;
     return selected;
 }
 
-Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, enum EditMode mode) {
+void update_object(Selected selected, Object *object) {
+    Vector3 angle = Vector3Multiply(object->rotation_axis, makeVector3(object->angle));
+    object->current_rotation = Vector3Add(object->current_rotation, angle);
+    object->angle = 0;
+}
+
+Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, enum EditMode mode, Object *object) {
+    Selected selected_object = *selected;
     Ray ray = GetMouseRay(GetMousePosition(), cam);
 
     float angle = atan2f(camera_pos.x, camera_pos.y);
     float scale = 10000 / sqrtf(powf(camera_pos.x, 2) + powf(camera_pos.y, 2));
 
-    Vector3 inverse_axis = Vector3MultiplyValue(Vector3AddValue(xyz.axis, -1), -1);
-    Vector3 opposite_cam = Vector3MultiplyValue(cam.position, -scale);
-    Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), selected.pos);
+    Vector3 inverse_axis = Vector3Scale(Vector3AddValue(xyz.axis, -1), -1);
+    Vector3 opposite_cam = Vector3Scale(cam.position, -scale);
+    Vector3 current_axis = Vector3Add(Vector3Multiply(opposite_cam, inverse_axis), selected_object.pos);
 
 
     Matrix translation = MatrixTranslate(current_axis.x, current_axis.y, current_axis.z);
@@ -185,7 +204,7 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
 
     if (mode == ROTATE) {
         Vector3 hidden_rotation_cube = Vector3Multiply((Vector3){-10000, -10000, 10000}, xyz.rotation_axis);
-        Vector3 ww = Vector3Add(selected.pos, hidden_rotation_cube);
+        Vector3 ww = Vector3Add(selected_object.pos, hidden_rotation_cube);
         matrix = Vector3Translate(ww);
     }
 
@@ -195,7 +214,7 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
 
     Matrix manipulated_matrix;
     if (mode == MOVE) {
-        Vector3 new_position = Vector3Add(selected.pos, offset_current_axis);
+        Vector3 new_position = Vector3Add(selected_object.pos, offset_current_axis);
         manipulated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
     }
     if (mode == ROTATE) {
@@ -203,7 +222,10 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
         Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
         if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
         Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
-        manipulated_matrix = MatrixMultiply(selected.object.model.transform, rotate);
+        manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, rotate);
+
+        object->angle = rotate_angle;
+        object->rotation_axis = xyz.rotation_axis;
     }
 
     if (mode == SCALE) {
@@ -211,16 +233,34 @@ Matrix move_object(Camera cam, Selected selected, Mesh cube, Vector2 camera_pos,
         Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
         Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
         Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-        manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected.object.model.transform);
+        manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected_object.object.model.transform);
     }
     return manipulated_matrix;
 }
 
 
-void draw_model(Object o) {
-    Vector3 postion = getMatrixPosition(o.model.transform);
+void draw_model(Object o, Selected selected) {
     DrawModel(o.model, o.pos, 1, WHITE);
-    DrawBoundingBox(GetModelBoundingBox(o.model), GREEN);
+    if (selected.object.id == o.id) {
+        Model normalized_model = LoadModelFromMesh(o.model.meshes[0]);
+            // printV(o.current_rotation);
+
+        Matrix rot = RotationMatrixFromEuler(o.current_rotation.x, o.current_rotation.y, o.current_rotation.z);
+        Vector3 axis;
+        float angle;
+        MatrixToAxisAngle(rot, &axis, &angle);
+        printV(axis);
+        DrawModelWiresEx(normalized_model, o.pos, axis, angle * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
+
+        // if (o.rotation_axis.x == 1) {
+        // }
+        // if (o.rotation_axis.y == 1) {
+        //     DrawModelWiresEx(normalized_model, o.pos, o.rotation_axis, ( o.current_rotation.y) * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
+        // }
+        // if (o.rotation_axis.z == 1) {
+        //     DrawModelWiresEx(normalized_model, o.pos, o.rotation_axis, ( o.current_rotation.z) * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
+        // }
+    }
 }
 
 int main() {
@@ -250,6 +290,8 @@ int main() {
     RenderTexture2D world_render = LoadRenderTexture(WIDTH, HEIGHT);
     RenderTexture2D xyz_render = LoadRenderTexture(WIDTH, HEIGHT);
 
+    enum EditMode control_mode = ROTATE;
+
     while (!WindowShouldClose()) {
 
         float dist = GetMouseWheelMove();
@@ -274,19 +316,25 @@ int main() {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
 
-            xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
-            xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
-            xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
+            if (control_mode != ROTATE) {
+                xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
+                xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
+                xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
+            } else {
+                xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.rotation_box.mesh, xyz_control.x.rotation_box.matrix);
+                xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.rotation_box.mesh, xyz_control.y.rotation_box.matrix);
+                xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.rotation_box.mesh, xyz_control.z.rotation_box.matrix);
+            }
 
-            bool hit = false;
             for (int i = 0; i < arrlen(objects); i++) {
                 RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
-                if (box.hit) selected = update_selected(objects[i], i, true);
+                if (box.hit) selected = update_selected(objects[i], i, true, selected);
             }
         }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            selected = update_selected(objects[selected.index], selected.index, selected.is_selected);
+            selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
+            update_object(selected, &objects[selected.index]);
             xyz_control.x.ray.hit = false;
             xyz_control.y.ray.hit = false;
             xyz_control.z.ray.hit = false;
@@ -305,7 +353,7 @@ int main() {
             Vector2 camera_pos = {cam.position.z, cam.position.y};
             Mesh cube = xyz_control.hidden_box;
 
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.x, (enum EditMode)ROTATE);
+            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.x, control_mode, &objects[selected.index]);
             objects[selected.index].model.transform = new_position;
         }
 
@@ -313,7 +361,7 @@ int main() {
             Vector2 camera_pos = {cam.position.x, cam.position.z};
             Mesh cube = xyz_control.hidden_box;
 
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.y, (enum EditMode)ROTATE);
+            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.y, control_mode, &objects[selected.index]);
             objects[selected.index].model.transform = new_position;
         }
 
@@ -321,18 +369,18 @@ int main() {
             Vector2 camera_pos = {cam.position.y, cam.position.x};
             Mesh cube = xyz_control.hidden_box;
 
-            Matrix new_position = move_object(cam, selected, cube, camera_pos, xyz_control.z, (enum EditMode)ROTATE);
+            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.z, control_mode, &objects[selected.index]);
             objects[selected.index].model.transform = new_position;
         }
 
         for (int i = 0; i < arrlen(objects); i++) {
-            draw_model(objects[i]);
+            draw_model(objects[i], selected);
         }
 
 
         if (selected.is_selected) {
             edit_pos = getMatrixPosition(objects[selected.index].model.transform);
-            edit = ROTATE;
+            edit = control_mode;
         }
         EndMode3D();
         DrawFPS(10, 10);
@@ -341,7 +389,7 @@ int main() {
         BeginTextureMode(xyz_render);
         BeginMode3D(cam);
         ClearBackground(GetColor(0x00000000));
-        
+
         draw_xyz_control(edit_pos, edit, cam, &xyz_control);
         EndMode3D();
         EndTextureMode();
