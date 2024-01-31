@@ -1,0 +1,5 @@
+https://www.raylib.com/examples/shaders/loader.html?name=shaders_fog
+https://github.com/raysan5/raylib/blob/master/examples/shaders/resources/shaders/glsl330/fisheye.fs
+https://www.raylib.com/examples/shaders/loader.html?name=shaders_postprocessing
+https://www.raylib.com/examples/shaders/loader.html?name=shaders_basic_lighting
+https://www.raylib.com/examples/shaders/loader.html?name=shaders_mesh_instancing

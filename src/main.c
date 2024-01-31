@@ -22,23 +22,18 @@
 #define SCENE_GRID_SPACE 1
 #define EDIT_TOOLS_SCALE 4
 
-enum EditMode { MOVE,
-                SCALE,
-                ROTATE,
-                NONE
+typedef enum { MOVE,
+               SCALE,
+               ROTATE,
+               NONE
 
-};
+} EditMode;
 
 
 typedef struct {
     int id;
-    float angle;
     Model model;
-    Vector3 pos;
-    Vector3 scale;
     Texture2D texture;
-    Vector3 rotation_axis;
-    Vector3 current_rotation;
 } Object;
 
 typedef struct {
@@ -50,11 +45,11 @@ typedef struct {
 
 
 typedef struct {
-    HitObject hit_box;
-    HitObject rotation_box;
-    RayCollision ray;
     Vector3 axis;
+    RayCollision ray;
+    HitObject hit_box;
     Vector3 rotation_axis;
+    HitObject rotation_box;
 } AxisControl;
 
 typedef struct {
@@ -62,22 +57,30 @@ typedef struct {
     AxisControl y;
     AxisControl z;
     Mesh hidden_box;
-    Mesh rotation_plane;
 } XYZcontrol;
 
 typedef struct {
+    int index;
+    Vector3 pos;
     Object object;
     bool is_selected;
-    Vector3 pos;
-    int index;
 } Selected;
+
+typedef struct {
+    char *name;
+    Image img;
+    Vector2 pos;
+    bool pressed;
+    Rectangle rec;
+    char *img_path;
+    Texture2D texture;
+} Button;
 
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
 Vector3 origin = {0};
 
 void draw_graph() {
-
     for (int i = 0; i < SCENE_DETAIL; i++) {
         float step = SCENE_SIZE - (2 * SCENE_SIZE * i) / (float)(SCENE_DETAIL - 1);
         float point_one = -sqrtf(powf(SCENE_SIZE, 2) - powf(step, 2));
@@ -124,7 +127,7 @@ XYZcontrol init_XYZ_controls() {
     return xyz;
 }
 
-void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontrol *xyz) {
+void draw_xyz_control(Vector3 target, EditMode mode, Camera3D cam, XYZcontrol *xyz) {
     Vector3 end_pos_x_axis = Vector3Add(target, (Vector3){7.5f, 0, 0});
     Vector3 end_pos_y_axis = Vector3Add(target, (Vector3){0, 7.5f, 0});
     Vector3 end_pos_z_axis = Vector3Add(target, (Vector3){0, 0, -7.5f});
@@ -172,22 +175,15 @@ void draw_xyz_control(Vector3 target, enum EditMode mode, Camera3D cam, XYZcontr
 Selected update_selected(Object object, int index, bool is_selected, Selected curr_selected) {
     Selected selected;
     selected.object = object;
-    selected.object.angle += object.angle;
-    selected.object.rotation_axis = object.rotation_axis;
     selected.pos = getMatrixPosition(object.model.transform);
     selected.index = index;
     selected.is_selected = is_selected;
     return selected;
 }
 
-void update_object(Selected selected, Object *object) {
-    Vector3 angle = Vector3Multiply(object->rotation_axis, makeVector3(object->angle));
-    object->current_rotation = Vector3Add(object->current_rotation, angle);
-    object->angle = 0;
-}
-
-Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, enum EditMode mode, Object *object) {
+Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode, Object *object) {
     Selected selected_object = *selected;
+    Object tt = *object;
     Ray ray = GetMouseRay(GetMousePosition(), cam);
 
     float angle = atan2f(camera_pos.x, camera_pos.y);
@@ -222,10 +218,10 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
         Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
         if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
         Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
-        manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, rotate);
 
-        object->angle = rotate_angle;
-        object->rotation_axis = xyz.rotation_axis;
+        Matrix mm = Vector3Translate(getMatrixPosition(selected_object.object.model.transform));
+
+        manipulated_matrix = MatrixMultiply(tt.model.transform, rotate);
     }
 
     if (mode == SCALE) {
@@ -238,28 +234,75 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
     return manipulated_matrix;
 }
 
-
 void draw_model(Object o, Selected selected) {
-    DrawModel(o.model, o.pos, 1, WHITE);
-    if (selected.object.id == o.id) {
-        Model normalized_model = LoadModelFromMesh(o.model.meshes[0]);
-            // printV(o.current_rotation);
-
-        Matrix rot = RotationMatrixFromEuler(o.current_rotation.x, o.current_rotation.y, o.current_rotation.z);
+    DrawModel(o.model, Vector3Zero(), 1, WHITE);
+    if (selected.object.id == o.id && selected.is_selected) {
         Vector3 axis;
         float angle;
-        MatrixToAxisAngle(rot, &axis, &angle);
-        printV(axis);
-        DrawModelWiresEx(normalized_model, o.pos, axis, angle * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
+        MatrixToAxisAngle(o.model.transform, &axis, &angle);
 
-        // if (o.rotation_axis.x == 1) {
-        // }
-        // if (o.rotation_axis.y == 1) {
-        //     DrawModelWiresEx(normalized_model, o.pos, o.rotation_axis, ( o.current_rotation.y) * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
-        // }
-        // if (o.rotation_axis.z == 1) {
-        //     DrawModelWiresEx(normalized_model, o.pos, o.rotation_axis, ( o.current_rotation.z) * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
-        // }
+        for (int i = 0; i < o.model.meshCount; i++) {
+            Model normalized_model = LoadModelFromMesh(o.model.meshes[i]);
+            DrawModelWiresEx(normalized_model, getMatrixPosition(o.model.transform), axis, angle * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
+        }
+    }
+}
+
+Button load_button(char *img_path, char *name, int x, int y) {
+    Button button;
+    button.name = name;
+    button.pressed = false;
+    button.img_path = img_path;
+
+    button.pos.x = x;
+    button.pos.y = y;
+
+    Image img = LoadImage(img_path);
+
+    button.rec.x = x - 5;
+    button.rec.y = y - 5;
+    button.rec.width = img.width + 10;
+    button.rec.height = img.height + 10;
+
+    button.texture = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return button;
+}
+
+Object load_object(char *model, char *texture, int id) {
+    Object object;
+    object.id = id;
+    object.model = LoadModel(model);
+    object.texture = LoadTexture(texture);
+    object.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = object.texture;
+    return object;
+}
+
+void render_button(Button b) {
+    Color color;
+    if (b.pressed) color = GetColor(0xFFDD33FF);
+    if (!b.pressed) color = GetColor(0xFFFFFFFF);
+
+    DrawRectangleLines(b.rec.x, b.rec.y, b.rec.width, b.rec.height, color);
+    DrawTextureEx(b.texture, b.pos, 0, 1, color);
+}
+
+void button_pressed(int button_index, EditMode *edit) {
+    switch (button_index) {
+        case 0:
+            *edit = MOVE;
+            break;
+
+        case 1:
+            *edit = ROTATE;
+            break;
+
+        case 2:
+            *edit = SCALE;
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -271,27 +314,25 @@ int main() {
     SetExitKey(0);
 
     Object *objects = NULL;
+    Button *buttons = NULL;
 
-    XYZcontrol xyz_control = init_XYZ_controls();
 
-    Object model1;
-    model1.id = 1;
-    model1.scale = Vector3One();
-    model1.pos = (Vector3){0, 0, 0};
-    model1.angle = 0;
-    model1.model = LoadModel("resources/models/church.obj");
-    model1.texture = LoadTexture("resources/models/church_diffuse.png");
-    model1.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = model1.texture;
+    arrput(buttons, load_button("resources/icons/move.png", "move", 15, 15));
+    arrput(buttons, load_button("resources/icons/rotate.png", "rotate", 15, 65));
+    arrput(buttons, load_button("resources/icons/scale.png", "scale", 15, 115));
+    buttons[0].pressed = true;
+    int selected_button_index = 0;
 
-    arrput(objects, model1);
+    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1));
+    objects[0].model.transform = MatrixTranslate(-15, 0,0);
 
     Selected selected = {0};
 
-    RenderTexture2D world_render = LoadRenderTexture(WIDTH, HEIGHT);
+    EditMode control_mode = MOVE;
+
+    XYZcontrol xyz_control = init_XYZ_controls();
     RenderTexture2D xyz_render = LoadRenderTexture(WIDTH, HEIGHT);
-
-    enum EditMode control_mode = ROTATE;
-
+    RenderTexture2D world_render = LoadRenderTexture(WIDTH, HEIGHT);
     while (!WindowShouldClose()) {
 
         float dist = GetMouseWheelMove();
@@ -313,41 +354,52 @@ int main() {
             cam.up = camera_start_up;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && GetMousePosition().x > 60) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
+            bool dit_not_hit = true;
 
-            if (control_mode != ROTATE) {
-                xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
-                xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
-                xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
-            } else {
-                xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.rotation_box.mesh, xyz_control.x.rotation_box.matrix);
-                xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.rotation_box.mesh, xyz_control.y.rotation_box.matrix);
-                xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.rotation_box.mesh, xyz_control.z.rotation_box.matrix);
+            if (selected.is_selected) {
+                if (control_mode != ROTATE) {
+                    xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
+                    xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
+                    xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
+                } else {
+                    xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.rotation_box.mesh, xyz_control.x.rotation_box.matrix);
+                    xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.rotation_box.mesh, xyz_control.y.rotation_box.matrix);
+                    xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.rotation_box.mesh, xyz_control.z.rotation_box.matrix);
+                }
             }
 
             for (int i = 0; i < arrlen(objects); i++) {
+
                 RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
-                if (box.hit) selected = update_selected(objects[i], i, true, selected);
+                // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
+                if (box.hit) {
+                    dit_not_hit = false;
+                    selected = update_selected(objects[i], i, true, selected);
+                }
+                if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
+                    selected.is_selected = false;
+                }
             }
         }
 
-        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
-            update_object(selected, &objects[selected.index]);
-            xyz_control.x.ray.hit = false;
-            xyz_control.y.ray.hit = false;
-            xyz_control.z.ray.hit = false;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            Vector2 mouse_pos = GetMousePosition();
+            if (mouse_pos.x < 60) {
+
+                for (int i = 0; i < arrlen(buttons); i++) {
+                    if (CheckCollisionPointRec(mouse_pos, buttons[i].rec)) {
+                        buttons[i].pressed = true;
+                        selected_button_index = i;
+                    }
+                }
+                for (int i = 0; i < arrlen(buttons); i++)
+                    if (i != selected_button_index) buttons[i].pressed = false;
+
+                button_pressed(selected_button_index, &control_mode);
+            }
         }
-
-        BeginTextureMode(world_render);
-        ClearBackground(GetColor(0x181818FF));
-
-        BeginMode3D(cam);
-        draw_graph();
-
-        Vector3 edit_pos = origin;
-        enum EditMode edit = NONE;
 
         if (xyz_control.x.ray.hit) {
             Vector2 camera_pos = {cam.position.z, cam.position.y};
@@ -373,33 +425,64 @@ int main() {
             objects[selected.index].model.transform = new_position;
         }
 
-        for (int i = 0; i < arrlen(objects); i++) {
-            draw_model(objects[i], selected);
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
+            xyz_control.x.ray.hit = false;
+            xyz_control.y.ray.hit = false;
+            xyz_control.z.ray.hit = false;
         }
 
+        // clang-format off
+        BeginTextureMode(world_render);
+            ClearBackground(GetColor(0x181818FF));
+            BeginMode3D(cam);
+                draw_graph();
 
-        if (selected.is_selected) {
-            edit_pos = getMatrixPosition(objects[selected.index].model.transform);
-            edit = control_mode;
-        }
-        EndMode3D();
-        DrawFPS(10, 10);
+                Vector3 edit_pos = origin;
+
+                for (int i = 0; i < arrlen(objects); i++) draw_model(objects[i], selected);
+                if (selected.is_selected) edit_pos = getMatrixPosition(objects[selected.index].model.transform);
+                
+            EndMode3D();
+            DrawFPS(70, HEIGHT - 25);
         EndTextureMode();
 
         BeginTextureMode(xyz_render);
-        BeginMode3D(cam);
-        ClearBackground(GetColor(0x00000000));
+            BeginMode3D(cam);
+                ClearBackground(GetColor(0x00000000));
+                if (selected.is_selected) draw_xyz_control(edit_pos, control_mode, cam, &xyz_control);
 
-        draw_xyz_control(edit_pos, edit, cam, &xyz_control);
-        EndMode3D();
+            EndMode3D();
+            DrawRectangle(0,0, 60, HEIGHT, GetColor(0x282828FF));
+            for (int i = 0; i < arrlen(buttons); i++) render_button(buttons[i]);
         EndTextureMode();
 
         BeginDrawing();
-        ClearBackground(GetColor(0x181818FF));
-        DrawTextureRec(world_render.texture, (Rectangle){0, 0, world_render.texture.width, -world_render.texture.height}, (Vector2){0, 0}, WHITE);
-        DrawTextureRec(xyz_render.texture, (Rectangle){0, 0, xyz_render.texture.width, -xyz_render.texture.height}, (Vector2){0, 0}, WHITE);
+            ClearBackground(GetColor(0x181818FF));
+            DrawTextureRec(world_render.texture, (Rectangle){0, 0, world_render.texture.width, -world_render.texture.height}, (Vector2){0, 0}, WHITE);
+            DrawTextureRec(xyz_render.texture, (Rectangle){0, 0, xyz_render.texture.width, -xyz_render.texture.height}, (Vector2){0, 0}, WHITE);
         EndDrawing();
+        // clang-format on
     }
+
+    for (int i = 0; i < arrlen(objects); i++) UnloadModel(objects[i].model);
+    for (int i = 0; i < arrlen(objects); i++) UnloadTexture(objects[i].texture);
+
+    for (int i = 0; i < arrlen(buttons); i++) UnloadImage(buttons[i].img);
+    for (int i = 0; i < arrlen(buttons); i++) UnloadTexture(buttons[i].texture);
+
+    UnloadMesh(xyz_control.hidden_box);
+    UnloadMesh(xyz_control.x.hit_box.mesh);
+    UnloadMesh(xyz_control.y.hit_box.mesh);
+    UnloadMesh(xyz_control.z.hit_box.mesh);
+
+    UnloadMesh(xyz_control.x.rotation_box.mesh);
+    UnloadMaterial(xyz_control.x.rotation_box.material);
+    UnloadMesh(xyz_control.y.rotation_box.mesh);
+    UnloadMaterial(xyz_control.y.rotation_box.material);
+    UnloadMesh(xyz_control.z.rotation_box.mesh);
+    UnloadMaterial(xyz_control.z.rotation_box.material);
+
 
     UnloadRenderTexture(world_render);
     UnloadRenderTexture(xyz_render);

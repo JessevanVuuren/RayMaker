@@ -1,0 +1,3 @@
+- selected no object reference -> only id
+- rotation only the half you can interact with
+- hide move axis you look at
