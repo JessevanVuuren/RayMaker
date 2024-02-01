@@ -219,9 +219,12 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
         if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
         Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
 
-        Matrix mm = Vector3Translate(getMatrixPosition(selected_object.object.model.transform));
+        Vector3 t = getMatrixPosition(selected_object.object.model.transform);
+        // t = Vector3Invert(t);
 
-        manipulated_matrix = MatrixMultiply(tt.model.transform, rotate);
+
+        manipulated_matrix = MatrixMultiply(MatrixMultiply(MatrixIdentity(), rotate), selected_object.object.model.transform);
+        // manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, rotate);
     }
 
     if (mode == SCALE) {
@@ -320,15 +323,15 @@ int main() {
     arrput(buttons, load_button("resources/icons/move.png", "move", 15, 15));
     arrput(buttons, load_button("resources/icons/rotate.png", "rotate", 15, 65));
     arrput(buttons, load_button("resources/icons/scale.png", "scale", 15, 115));
-    buttons[0].pressed = true;
-    int selected_button_index = 0;
+    buttons[1].pressed = true;
+    int selected_button_index = 1;
 
     arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1));
     objects[0].model.transform = MatrixTranslate(-15, 0,0);
 
     Selected selected = {0};
 
-    EditMode control_mode = MOVE;
+    EditMode control_mode = ROTATE;
 
     XYZcontrol xyz_control = init_XYZ_controls();
     RenderTexture2D xyz_render = LoadRenderTexture(WIDTH, HEIGHT);
