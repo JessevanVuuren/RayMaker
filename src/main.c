@@ -181,6 +181,7 @@ Selected update_selected(Object object, int index, bool is_selected, Selected cu
     return selected;
 }
 
+
 Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode, Object *object) {
     Selected selected_object = *selected;
     Object tt = *object;
@@ -204,35 +205,73 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
         matrix = Vector3Translate(ww);
     }
 
+    // Material mat = LoadMaterialDefault();
+    // mat.maps[MATERIAL_MAP_DIFFUSE].color = PURPLE;
+    // DrawMesh(cube, mat, matrix);
+
     Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
     Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
     Vector3 offset_current_axis = Vector3Multiply(xyz.axis, hit_point_offset);
 
     Matrix manipulated_matrix;
     if (mode == MOVE) {
-        Vector3 new_position = Vector3Add(selected_object.pos, offset_current_axis);
-        manipulated_matrix = MatrixTranslate(new_position.x, new_position.y, new_position.z);
+        manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, Vector3Translate(offset_current_axis));
     }
     if (mode == ROTATE) {
-        float rotate_angle = Vector3Angle(xyz.ray.point, hit_point);
-        Vector3 cross_product = Vector3CrossProduct(xyz.ray.point, hit_point);
+        Vector3 base_point = Vector3Subtract(xyz.ray.point, selected_object.pos);
+        Vector3 drag_point = Vector3Subtract(hit_point, selected_object.pos);
+
+        float rotate_angle = Vector3Angle(base_point, drag_point);
+        Vector3 cross_product = Vector3CrossProduct(base_point, drag_point);
+
         if (getAxisValue(xyz.rotation_axis, cross_product) < 0) rotate_angle *= -1;
+
         Matrix rotate = MatrixRotate(xyz.rotation_axis, rotate_angle);
+        Matrix rotate_at_origin = MatrixMultiply(MatrixIdentity(), rotate);
+        Matrix rotate_to_position = MatrixMultiply(selected_object.object.model.transform, rotate_at_origin);
 
-        Vector3 t = getMatrixPosition(selected_object.object.model.transform);
-        // t = Vector3Invert(t);
-
-
-        manipulated_matrix = MatrixMultiply(MatrixMultiply(MatrixIdentity(), rotate), selected_object.object.model.transform);
-        // manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, rotate);
+        manipulated_matrix = selected_object.object.model.transform;
+        CopyRotationMatrix(&rotate_to_position, &manipulated_matrix);
     }
 
     if (mode == SCALE) {
-        offset_current_axis.z = -offset_current_axis.z;
-        Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
-        Vector3 add_base_one = Vector3AddValue(current_axis_scale, 1);
-        Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-        manipulated_matrix = MatrixMultiply(matrix_scaled_up, selected_object.object.model.transform);
+        Vector3 rotation = Vector3Divide(getEulerRotationFromMatrix(selected_object.object.model.transform), makeVector3(PI));
+        Vector3 cross = Vector3CrossProduct(rotation, xyz.axis);
+        Vector3 w = Vector3
+
+        printV(tt);
+
+
+        // Vector3 woow = Vector3Scale(cross, Vector3Sum(offset_current_axis));
+
+        // // printV(Vector3Scale(cross, Vector3Sum(offset_current_axis)));
+
+        // // printV(offset_current_axis);
+        
+        // // printV(Vector3CrossProduct(rotation, xyz.axis));
+
+        
+
+
+        // // Vector3 rotation = ExtractRotationAxis(selected_object.object.model.transform);
+        // // Vector3 scale = Vector3Scale(Vector3CrossProduct(rotation, xyz.axis), Vector3Sum(current_axis_scale));
+        
+
+        // // printV(Vector3Scale(getEulerRotationFromMatrix(selected_object.object.model.transform), RAD2DEG));
+        
+
+        // // offset_current_axis.z = -offset_current_axis.z;
+        // // Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
+
+        Vector3 add_base_one = Vector3AddValue(offset_current_axis, 1);
+        // Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
+        // // manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, matrix_scaled_up);
+        // manipulated_matrix = selected_object.object.model.transform;
+        manipulated_matrix = selected_object.object.model.transform;
+
+
+
+
     }
     return manipulated_matrix;
 }
@@ -323,15 +362,17 @@ int main() {
     arrput(buttons, load_button("resources/icons/move.png", "move", 15, 15));
     arrput(buttons, load_button("resources/icons/rotate.png", "rotate", 15, 65));
     arrput(buttons, load_button("resources/icons/scale.png", "scale", 15, 115));
-    buttons[1].pressed = true;
-    int selected_button_index = 1;
+    buttons[2].pressed = true;
+    int selected_button_index = 2;
 
     arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1));
-    objects[0].model.transform = MatrixTranslate(-15, 0,0);
+    // objects[0].model.transform = MatrixTranslate(-15, 0, 0);
+    // objects[0].model.transform = MatrixTranslate(0, 0, 0);
+    objects[0].model.transform = MatrixRotateX(90 * DEG2RAD);
 
     Selected selected = {0};
 
-    EditMode control_mode = ROTATE;
+    EditMode control_mode = SCALE;
 
     XYZcontrol xyz_control = init_XYZ_controls();
     RenderTexture2D xyz_render = LoadRenderTexture(WIDTH, HEIGHT);
@@ -404,29 +445,7 @@ int main() {
             }
         }
 
-        if (xyz_control.x.ray.hit) {
-            Vector2 camera_pos = {cam.position.z, cam.position.y};
-            Mesh cube = xyz_control.hidden_box;
 
-            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.x, control_mode, &objects[selected.index]);
-            objects[selected.index].model.transform = new_position;
-        }
-
-        if (xyz_control.y.ray.hit) {
-            Vector2 camera_pos = {cam.position.x, cam.position.z};
-            Mesh cube = xyz_control.hidden_box;
-
-            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.y, control_mode, &objects[selected.index]);
-            objects[selected.index].model.transform = new_position;
-        }
-
-        if (xyz_control.z.ray.hit) {
-            Vector2 camera_pos = {cam.position.y, cam.position.x};
-            Mesh cube = xyz_control.hidden_box;
-
-            Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.z, control_mode, &objects[selected.index]);
-            objects[selected.index].model.transform = new_position;
-        }
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
@@ -440,6 +459,30 @@ int main() {
             ClearBackground(GetColor(0x181818FF));
             BeginMode3D(cam);
                 draw_graph();
+
+                if (xyz_control.x.ray.hit) {
+                    Vector2 camera_pos = {cam.position.z, cam.position.y};
+                    Mesh cube = xyz_control.hidden_box;
+
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.x, control_mode, &objects[selected.index]);
+                    objects[selected.index].model.transform = new_position;
+                }
+
+                if (xyz_control.y.ray.hit) {
+                    Vector2 camera_pos = {cam.position.x, cam.position.z};
+                    Mesh cube = xyz_control.hidden_box;
+
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.y, control_mode, &objects[selected.index]);
+                    objects[selected.index].model.transform = new_position;
+                }
+
+                if (xyz_control.z.ray.hit) {
+                    Vector2 camera_pos = {cam.position.y, cam.position.x};
+                    Mesh cube = xyz_control.hidden_box;
+
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.z, control_mode, &objects[selected.index]);
+                    objects[selected.index].model.transform = new_position;
+                }
 
                 Vector3 edit_pos = origin;
 

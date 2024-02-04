@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 Matrix Vector3Translate(Vector3 pos) {
     return MatrixTranslate(pos.x, pos.y, pos.z);
@@ -14,7 +14,7 @@ Vector3 getMatrixPosition(Matrix mat) {
 }
 
 Vector3 makeVector3(float value) {
-    return (Vector3) {value, value, value};
+    return (Vector3){value, value, value};
 }
 
 void printV(Vector3 vec) {
@@ -29,11 +29,22 @@ float getAxisValue(Vector3 axis, Vector3 vec) {
     return value;
 }
 
+float Vector3Sum(Vector3 sum) {
+    return sum.x + sum.y + sum.z;
+}
+
 float ExtractRotationAngleFromMatrix(Matrix mat) {
-    float trace = mat.m0 + mat.m5 + mat.m10; // Sum of the diagonal elements
+    float trace = mat.m0 + mat.m5 + mat.m10;    // Sum of the diagonal elements
     float angle = acosf((trace - 1.0f) / 2.0f); // angle in radians
 
     return angle;
+}
+
+Vector3 getEulerRotationFromMatrix(Matrix mat) {
+    float x = atan2f(mat.m6, mat.m10);
+    float y = atan2f(-mat.m2, sqrtf(powf(mat.m6, 2) + powf(mat.m10, 2)));
+    float z = atan2f(mat.m1, mat.m0);
+    return (Vector3){x,y,z};
 }
 
 Mesh GenMeshRing(float height, float inner_radius, float outer_radius, int slices) {
@@ -109,16 +120,28 @@ Mesh GenMeshRing(float height, float inner_radius, float outer_radius, int slice
     return mesh;
 }
 
-Matrix RotationMatrixFromEuler(float x, float y, float z) {
-    Matrix rx = MatrixRotateX(x);
-    Matrix ry = MatrixRotateY(y);
-    Matrix rz = MatrixRotateZ(z);
-
-    // Combine rotations: first Z, then Y, then X
-    return MatrixMultiply(MatrixMultiply(rz, ry), rx);
+Vector3 ExtractRotationAxis(Matrix mat) {
+    Vector3 axis;
+    // Assuming mat is a pure rotation matrix, calculate the axis
+    // Using the fact that for a rotation matrix R, R - R^T is skew-symmetric and encodes the axis
+    float x = mat.m6 - mat.m9; // R[2][1] - R[1][2]
+    float y = mat.m8 - mat.m2; // R[0][2] - R[2][0]
+    float z = mat.m1 - mat.m4; // R[1][0] - R[0][1]
+    
+    // Normalize the axis vector
+    float norm = sqrtf(x * x + y * y + z * z);
+    if (norm != 0.0f) { // Avoid division by zero
+        axis.x = x / norm;
+        axis.y = y / norm;
+        axis.z = z / norm;
+    } else {
+        axis.x = axis.y = axis.z = 0.0f;
+    }
+    
+    return axis;
 }
 
-void MatrixToAxisAngle(Matrix mat, Vector3* axis, float* angle) {
+void MatrixToAxisAngle(Matrix mat, Vector3 *axis, float *angle) {
     float trace = mat.m0 + mat.m5 + mat.m10;
     *angle = acosf((trace - 1.0f) / 2.0f);
 
@@ -132,4 +155,22 @@ void MatrixToAxisAngle(Matrix mat, Vector3* axis, float* angle) {
         axis->y /= norm;
         axis->z /= norm;
     }
+}
+
+void CopyRotationMatrix(Matrix *source, Matrix *target) {
+    target->m0 = source->m0;
+    target->m1 = source->m1;
+    target->m2 = source->m2;
+    target->m4 = source->m4;
+    target->m5 = source->m5;
+    target->m6 = source->m6;
+    target->m8 = source->m8;
+    target->m9 = source->m9;
+    target->m10 = source->m10;
+}
+
+void setMatrixPostion(Matrix *source, Vector3 pos) {
+    source->m12 = pos.x;
+    source->m13 = pos.y;
+    source->m14 = pos.z;
 }
