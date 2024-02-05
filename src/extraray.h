@@ -1,5 +1,10 @@
+#ifndef EXTRARAY_H
+#define EXTRARAY_H
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <raylib.h>
+#include <raymath.h>
 
 Matrix Vector3Translate(Vector3 pos) {
     return MatrixTranslate(pos.x, pos.y, pos.z);
@@ -174,3 +179,6 @@ void setMatrixPostion(Matrix *source, Vector3 pos) {
     source->m13 = pos.y;
     source->m14 = pos.z;
 }
+
+
+#endif

@@ -6,6 +6,8 @@
 #include "raymath.h"
 #include "rcamera.h"
 
+#include "components.h"
+
 #include "extraray.h"
 
 #define STB_DS_IMPLEMENTATION
@@ -20,7 +22,6 @@
 #define SCENE_SIZE 100
 #define SCENE_DETAIL 101
 #define SCENE_GRID_SPACE 1
-#define EDIT_TOOLS_SCALE 4
 
 typedef enum { MOVE,
                SCALE,
@@ -36,28 +37,7 @@ typedef struct {
     Texture2D texture;
 } Object;
 
-typedef struct {
-    int id;
-    Mesh mesh;
-    Matrix matrix;
-    Material material;
-} HitObject;
 
-
-typedef struct {
-    Vector3 axis;
-    RayCollision ray;
-    HitObject hit_box;
-    Vector3 rotation_axis;
-    HitObject rotation_box;
-} AxisControl;
-
-typedef struct {
-    AxisControl x;
-    AxisControl y;
-    AxisControl z;
-    Mesh hidden_box;
-} XYZcontrol;
 
 typedef struct {
     int index;
@@ -65,16 +45,6 @@ typedef struct {
     Object object;
     bool is_selected;
 } Selected;
-
-typedef struct {
-    char *name;
-    Image img;
-    Vector2 pos;
-    bool pressed;
-    Rectangle rec;
-    char *img_path;
-    Texture2D texture;
-} Button;
 
 Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
@@ -91,41 +61,7 @@ void draw_graph() {
     }
 }
 
-XYZcontrol init_XYZ_controls() {
-    XYZcontrol xyz;
-    xyz.hidden_box = GenMeshCube(20000, 20000, 20000);
 
-    xyz.x.ray.hit = false;
-    xyz.y.ray.hit = false;
-    xyz.z.ray.hit = false;
-
-    xyz.x.axis = (Vector3){1, 0, 0};
-    xyz.y.axis = (Vector3){0, 1, 0};
-    xyz.z.axis = (Vector3){0, 0, 1};
-
-    xyz.x.rotation_axis = (Vector3){0, 1, 0};
-    xyz.y.rotation_axis = (Vector3){0, 0, 1};
-    xyz.z.rotation_axis = (Vector3){1, 0, 0};
-
-    xyz.x.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
-    xyz.y.hit_box.mesh = GenMeshPlane(7.5, .6, 1, 1);
-    xyz.z.hit_box.mesh = GenMeshPlane(.6, 7.5, 1, 1);
-
-    xyz.x.rotation_box.material = LoadMaterialDefault();
-    xyz.x.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
-
-    xyz.y.rotation_box.material = LoadMaterialDefault();
-    xyz.y.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF00FF);
-
-    xyz.z.rotation_box.material = LoadMaterialDefault();
-    xyz.z.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FFFF);
-
-    xyz.x.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
-    xyz.y.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
-    xyz.z.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
-
-    return xyz;
-}
 
 void draw_xyz_control(Vector3 target, EditMode mode, Camera3D cam, XYZcontrol *xyz) {
     Vector3 end_pos_x_axis = Vector3Add(target, (Vector3){7.5f, 0, 0});
@@ -235,43 +171,10 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
     }
 
     if (mode == SCALE) {
-        Vector3 rotation = Vector3Divide(getEulerRotationFromMatrix(selected_object.object.model.transform), makeVector3(PI));
-        Vector3 cross = Vector3CrossProduct(rotation, xyz.axis);
-        Vector3 w = Vector3
-
-        printV(tt);
-
-
-        // Vector3 woow = Vector3Scale(cross, Vector3Sum(offset_current_axis));
-
-        // // printV(Vector3Scale(cross, Vector3Sum(offset_current_axis)));
-
-        // // printV(offset_current_axis);
-        
-        // // printV(Vector3CrossProduct(rotation, xyz.axis));
-
-        
-
-
-        // // Vector3 rotation = ExtractRotationAxis(selected_object.object.model.transform);
-        // // Vector3 scale = Vector3Scale(Vector3CrossProduct(rotation, xyz.axis), Vector3Sum(current_axis_scale));
-        
-
-        // // printV(Vector3Scale(getEulerRotationFromMatrix(selected_object.object.model.transform), RAD2DEG));
-        
-
-        // // offset_current_axis.z = -offset_current_axis.z;
-        // // Vector3 current_axis_scale = Vector3Multiply(offset_current_axis, xyz.axis);
-
+        offset_current_axis.z = -offset_current_axis.z;
         Vector3 add_base_one = Vector3AddValue(offset_current_axis, 1);
-        // Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-        // // manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, matrix_scaled_up);
-        // manipulated_matrix = selected_object.object.model.transform;
-        manipulated_matrix = selected_object.object.model.transform;
-
-
-
-
+        Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
+        manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, matrix_scaled_up);
     }
     return manipulated_matrix;
 }
@@ -290,27 +193,6 @@ void draw_model(Object o, Selected selected) {
     }
 }
 
-Button load_button(char *img_path, char *name, int x, int y) {
-    Button button;
-    button.name = name;
-    button.pressed = false;
-    button.img_path = img_path;
-
-    button.pos.x = x;
-    button.pos.y = y;
-
-    Image img = LoadImage(img_path);
-
-    button.rec.x = x - 5;
-    button.rec.y = y - 5;
-    button.rec.width = img.width + 10;
-    button.rec.height = img.height + 10;
-
-    button.texture = LoadTextureFromImage(img);
-    UnloadImage(img);
-    return button;
-}
-
 Object load_object(char *model, char *texture, int id) {
     Object object;
     object.id = id;
@@ -318,15 +200,6 @@ Object load_object(char *model, char *texture, int id) {
     object.texture = LoadTexture(texture);
     object.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = object.texture;
     return object;
-}
-
-void render_button(Button b) {
-    Color color;
-    if (b.pressed) color = GetColor(0xFFDD33FF);
-    if (!b.pressed) color = GetColor(0xFFFFFFFF);
-
-    DrawRectangleLines(b.rec.x, b.rec.y, b.rec.width, b.rec.height, color);
-    DrawTextureEx(b.texture, b.pos, 0, 1, color);
 }
 
 void button_pressed(int button_index, EditMode *edit) {
@@ -362,13 +235,10 @@ int main() {
     arrput(buttons, load_button("resources/icons/move.png", "move", 15, 15));
     arrput(buttons, load_button("resources/icons/rotate.png", "rotate", 15, 65));
     arrput(buttons, load_button("resources/icons/scale.png", "scale", 15, 115));
-    buttons[2].pressed = true;
-    int selected_button_index = 2;
+    buttons[0].pressed = true;
+    int selected_button_index = 0;
 
     arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1));
-    // objects[0].model.transform = MatrixTranslate(-15, 0, 0);
-    // objects[0].model.transform = MatrixTranslate(0, 0, 0);
-    objects[0].model.transform = MatrixRotateX(90 * DEG2RAD);
 
     Selected selected = {0};
 
@@ -500,7 +370,7 @@ int main() {
 
             EndMode3D();
             DrawRectangle(0,0, 60, HEIGHT, GetColor(0x282828FF));
-            for (int i = 0; i < arrlen(buttons); i++) render_button(buttons[i]);
+            render_buttons(buttons, arrlen(buttons));
         EndTextureMode();
 
         BeginDrawing();
