@@ -33,3 +33,26 @@ void render_buttons(Button *buttons, int size) {
         DrawTextureEx(b.texture, b.pos, 0, 1, color);
     }
 }
+
+void button_pressed(int button_index, EditMode *edit) {
+    switch (button_index) {
+        case 0:
+            *edit = MOVE;
+            break;
+
+        case 1:
+            *edit = ROTATE;
+            break;
+
+        case 2:
+            *edit = SCALE;
+            break;
+
+        default:
+            break;
+    }
+}
+
+void component_list(Button *buttons, int size) {
+
+}

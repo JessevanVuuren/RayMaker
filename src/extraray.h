@@ -1,16 +1,16 @@
-#ifndef EXTRARAY_H
-#define EXTRARAY_H
+#ifndef COMPONENTS_HH
+#define COMPONENTS_HH
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <raylib.h>
 #include <raymath.h>
 
-Matrix Vector3Translate(Vector3 pos) {
+static inline Matrix Vector3Translate(Vector3 pos) {
     return MatrixTranslate(pos.x, pos.y, pos.z);
 }
 
-Vector3 getMatrixPosition(Matrix mat) {
+static inline Vector3 getMatrixPosition(Matrix mat) {
     Vector3 translation;
     translation.x = mat.m12;
     translation.y = mat.m13;
@@ -18,15 +18,15 @@ Vector3 getMatrixPosition(Matrix mat) {
     return translation;
 }
 
-Vector3 makeVector3(float value) {
+static inline Vector3 makeVector3(float value) {
     return (Vector3){value, value, value};
 }
 
-void printV(Vector3 vec) {
+static inline void printV(Vector3 vec) {
     printf("vec: X: %f, Y: %f, Z: %f\n", vec.x, vec.y, vec.z);
 }
 
-float getAxisValue(Vector3 axis, Vector3 vec) {
+static inline float getAxisValue(Vector3 axis, Vector3 vec) {
     float value = 0;
     if (axis.x == 1) value += vec.x;
     if (axis.y == 1) value += vec.y;
@@ -34,25 +34,25 @@ float getAxisValue(Vector3 axis, Vector3 vec) {
     return value;
 }
 
-float Vector3Sum(Vector3 sum) {
+static inline float Vector3Sum(Vector3 sum) {
     return sum.x + sum.y + sum.z;
 }
 
-float ExtractRotationAngleFromMatrix(Matrix mat) {
+static inline float ExtractRotationAngleFromMatrix(Matrix mat) {
     float trace = mat.m0 + mat.m5 + mat.m10;    // Sum of the diagonal elements
     float angle = acosf((trace - 1.0f) / 2.0f); // angle in radians
 
     return angle;
 }
 
-Vector3 getEulerRotationFromMatrix(Matrix mat) {
+static inline Vector3 getEulerRotationFromMatrix(Matrix mat) {
     float x = atan2f(mat.m6, mat.m10);
     float y = atan2f(-mat.m2, sqrtf(powf(mat.m6, 2) + powf(mat.m10, 2)));
     float z = atan2f(mat.m1, mat.m0);
     return (Vector3){x,y,z};
 }
 
-Mesh GenMeshRing(float height, float inner_radius, float outer_radius, int slices) {
+static inline Mesh GenMeshRing(float height, float inner_radius, float outer_radius, int slices) {
     Mesh mesh = {0};
 
     mesh.vertexCount = slices * 4;
@@ -125,7 +125,7 @@ Mesh GenMeshRing(float height, float inner_radius, float outer_radius, int slice
     return mesh;
 }
 
-Vector3 ExtractRotationAxis(Matrix mat) {
+static inline Vector3 ExtractRotationAxis(Matrix mat) {
     Vector3 axis;
     // Assuming mat is a pure rotation matrix, calculate the axis
     // Using the fact that for a rotation matrix R, R - R^T is skew-symmetric and encodes the axis
@@ -135,7 +135,7 @@ Vector3 ExtractRotationAxis(Matrix mat) {
     
     // Normalize the axis vector
     float norm = sqrtf(x * x + y * y + z * z);
-    if (norm != 0.0f) { // Avoid division by zero
+    if (norm != 0.0f) { // Astatic inline void division by zero
         axis.x = x / norm;
         axis.y = y / norm;
         axis.z = z / norm;
@@ -146,7 +146,7 @@ Vector3 ExtractRotationAxis(Matrix mat) {
     return axis;
 }
 
-void MatrixToAxisAngle(Matrix mat, Vector3 *axis, float *angle) {
+static inline void MatrixToAxisAngle(Matrix mat, Vector3 *axis, float *angle) {
     float trace = mat.m0 + mat.m5 + mat.m10;
     *angle = acosf((trace - 1.0f) / 2.0f);
 
@@ -155,14 +155,14 @@ void MatrixToAxisAngle(Matrix mat, Vector3 *axis, float *angle) {
     axis->z = mat.m1 - mat.m4;
 
     float norm = sqrtf(axis->x * axis->x + axis->y * axis->y + axis->z * axis->z);
-    if (norm != 0.0f) { // to avoid division by zero
+    if (norm != 0.0f) { // to astatic inline void division by zero
         axis->x /= norm;
         axis->y /= norm;
         axis->z /= norm;
     }
 }
 
-void CopyRotationMatrix(Matrix *source, Matrix *target) {
+static inline void CopyRotationMatrix(Matrix *source, Matrix *target) {
     target->m0 = source->m0;
     target->m1 = source->m1;
     target->m2 = source->m2;
@@ -174,11 +174,10 @@ void CopyRotationMatrix(Matrix *source, Matrix *target) {
     target->m10 = source->m10;
 }
 
-void setMatrixPostion(Matrix *source, Vector3 pos) {
+static inline void setMatrixPostion(Matrix *source, Vector3 pos) {
     source->m12 = pos.x;
     source->m13 = pos.y;
     source->m14 = pos.z;
 }
 
-
-#endif
+#endif // COMPONENTS_HH
