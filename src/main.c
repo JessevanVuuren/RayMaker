@@ -23,22 +23,33 @@ Vector3 camera_start_pos = {10, 10, -10};
 Vector3 camera_start_up = {0, 1, 0};
 Vector3 origin = {0};
 
+bool mouse_is_in_ui_element(Rectangle box[], int size) {
+    Vector2 pos = GetMousePosition();
+    for (int i = 0; i < size; i++) {
+        if (pos.x > box[i].x && pos.x < box[i].width && pos.y > box[i].y && pos.y < box[i].height) return true;
+    }
+    return false;
+}
+
 
 int main() {
     Camera3D cam = {.fovy = 90, .position = camera_start_pos, .target = origin, .projection = CAMERA_PERSPECTIVE, .up = camera_start_up};
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    SetTargetFPS(60);
     InitWindow(WIDTH, HEIGHT, "RayMaker");
     SetExitKey(0);
+
 
     Object *objects = NULL;
     Button *buttons = NULL;
 
+    Rectangle ui_bounding_box[] = {
+        {0, 0, 60, HEIGHT},
+        {WIDTH - 300, 0, 300, 350}};
+    int ui_bounding_box_size = sizeof(ui_bounding_box) / sizeof(ui_bounding_box[0]);
+
     int current_width = WIDTH;
     int current_height = HEIGHT;
-    Rectangle view_port = {60, 0, WIDTH - 360, HEIGHT};
-
 
     arrput(buttons, load_button("resources/icons/move.png", "move", 15, 15));
     arrput(buttons, load_button("resources/icons/rotate.png", "rotate", 15, 65));
@@ -46,28 +57,26 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1));
+    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1, "church1"));
 
     Selected selected = {0};
 
     EditMode control_mode = MOVE;
 
     XYZcontrol xyz_control = init_XYZ_controls();
-    RenderTexture2D background = LoadRenderTexture(current_width, current_height);
-    RenderTexture2D xyz_render = LoadRenderTexture(view_port.width, view_port.height);
-    RenderTexture2D world_render = LoadRenderTexture(view_port.width, view_port.height);
+
+    RenderTexture2D ui_layer = LoadRenderTexture(WIDTH, HEIGHT);
+    RenderTexture2D xyz_layer = LoadRenderTexture(WIDTH, HEIGHT);
+    RenderTexture2D world_layer = LoadRenderTexture(WIDTH, HEIGHT);
     while (!WindowShouldClose()) {
 
         if (IsWindowResized()) {
             current_width = GetScreenWidth();
             current_height = GetScreenHeight();
 
-            view_port.width = current_width - 360;
-            view_port.height = current_height;
-
-            background = LoadRenderTexture(current_width, current_height);
-            xyz_render = LoadRenderTexture(view_port.width, view_port.height);
-            world_render = LoadRenderTexture(view_port.width, view_port.height);
+            ui_layer = LoadRenderTexture(current_width, current_height);
+            xyz_layer = LoadRenderTexture(current_width, current_height);
+            world_layer = LoadRenderTexture(current_width, current_height);
         }
 
         float dist = GetMouseWheelMove();
@@ -89,13 +98,16 @@ int main() {
             cam.up = camera_start_up;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && GetMousePosition().x > 60) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL)) {
+            if (mouse_is_in_ui_element(ui_bounding_box, ui_bounding_box_size)) {
+                printf("in ui\n");
+            };
+
             Ray ray = GetMouseRay(GetMousePosition(), cam);
             bool dit_not_hit = true;
 
             if (selected.is_selected) {
                 if (control_mode != ROTATE) {
-                    printf("%d\n", xyz_control.x.ray.hit);
                     xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
                     xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
                     xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
@@ -147,14 +159,7 @@ int main() {
         }
 
         // clang-format off
-
-        BeginTextureMode(background);
-            ClearBackground(GetColor(0x282828FF));
-            render_buttons(buttons, arrlen(buttons));
-            component_list(buttons, arrlen(buttons));
-        EndTextureMode();
-
-        BeginTextureMode(world_render);
+        BeginTextureMode(world_layer);
             ClearBackground(GetColor(0x181818FF));
             BeginMode3D(cam);
                 draw_graph(100, 101);
@@ -187,29 +192,44 @@ int main() {
                 if (selected.is_selected) edit_pos = getMatrixPosition(objects[selected.index].model.transform);
                 
             EndMode3D();
-            DrawFPS(10, current_height - 25);
+            DrawFPS(70, current_height - 25);
         EndTextureMode();
 
-        BeginTextureMode(xyz_render);
+        BeginTextureMode(xyz_layer);
             BeginMode3D(cam);
                 ClearBackground(GetColor(0x00000000));
                 if (selected.is_selected) draw_xyz_control(edit_pos, control_mode, cam, &xyz_control);
             EndMode3D();
         EndTextureMode();
 
+        BeginTextureMode(ui_layer);
+            for (int i = 0; i < ui_bounding_box_size; i++)
+            {
+                Rectangle box = ui_bounding_box[i];
+                DrawRectangle(box.x,box.y, box.width, box.height, GetColor(0x282828FF));
+            }
+             
+            render_buttons(buttons, arrlen(buttons));
+            component_list(objects, arrlen(objects), current_width, current_height);
+        EndTextureMode();
+
         BeginDrawing();
-            DrawTextureRec(background.texture, (Rectangle){0, 0, background.texture.width + 200, -background.texture.height}, (Vector2){0, 0}, WHITE);
-            DrawTextureRec(world_render.texture, (Rectangle){0, 0, world_render.texture.width, -world_render.texture.height}, (Vector2){view_port.x, view_port.y}, WHITE);
-            DrawTextureRec(xyz_render.texture, (Rectangle){0, 0, xyz_render.texture.width, -xyz_render.texture.height}, (Vector2){view_port.x, view_port.y}, WHITE);
+            DrawTextureRec(world_layer.texture, (Rectangle){0, 0, world_layer.texture.width, -world_layer.texture.height}, (Vector2){0, 0}, WHITE);
+            DrawTextureRec(xyz_layer.texture, (Rectangle){0, 0, xyz_layer.texture.width, -xyz_layer.texture.height}, (Vector2){0, 0}, WHITE);
+            DrawTextureRec(ui_layer.texture, (Rectangle){0, 0, ui_layer.texture.width, -ui_layer.texture.height}, (Vector2){0, 0}, WHITE);
         EndDrawing();
         // clang-format on
     }
 
-    for (int i = 0; i < arrlen(objects); i++) UnloadModel(objects[i].model);
-    for (int i = 0; i < arrlen(objects); i++) UnloadTexture(objects[i].texture);
+    for (int i = 0; i < arrlen(objects); i++)
+        UnloadModel(objects[i].model);
+    for (int i = 0; i < arrlen(objects); i++)
+        UnloadTexture(objects[i].texture);
 
-    for (int i = 0; i < arrlen(buttons); i++) UnloadImage(buttons[i].img);
-    for (int i = 0; i < arrlen(buttons); i++) UnloadTexture(buttons[i].texture);
+    for (int i = 0; i < arrlen(buttons); i++)
+        UnloadImage(buttons[i].img);
+    for (int i = 0; i < arrlen(buttons); i++)
+        UnloadTexture(buttons[i].texture);
 
     UnloadMesh(xyz_control.hidden_box);
     UnloadMesh(xyz_control.x.hit_box.mesh);
@@ -224,7 +244,10 @@ int main() {
     UnloadMaterial(xyz_control.z.rotation_box.material);
 
 
-    UnloadRenderTexture(world_render);
-    UnloadRenderTexture(xyz_render);
+    UnloadRenderTexture(ui_layer);
+    UnloadRenderTexture(world_layer);
+    UnloadRenderTexture(xyz_layer);
     CloseWindow();
+
+    return 0;
 }

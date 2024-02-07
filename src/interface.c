@@ -53,6 +53,18 @@ void button_pressed(int button_index, EditMode *edit) {
     }
 }
 
-void component_list(Button *buttons, int size) {
+void component_list(Object *objects, int size, int width, int height) {
+    int border_size = 10;
+    int list_height = 350;
+    int list_width = 300;
+    int item_distance = 5;
+    DrawRectangle(width - list_width + border_size, border_size, list_width - border_size * 2, list_height - border_size * 2, GetColor(0x181818FF));
+
+    for (int i = 0; i < size; i++)
+    {
+        Object o = objects[i];
+        DrawText(o.name, width - list_width + border_size + item_distance, border_size + (i + 1) * item_distance, 15, WHITE);
+    }
+    
 
 }

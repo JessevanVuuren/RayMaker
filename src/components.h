@@ -46,6 +46,7 @@ typedef struct {
 } Button;
 
 typedef struct {
+    char *name;
     int id;
     Model model;
     Texture2D texture;
@@ -63,7 +64,7 @@ typedef struct {
 Button load_button(char *img_path, char *name, int x, int y);
 void render_buttons(Button *buttons, int size);
 void button_pressed(int button_index, EditMode *edit);
-void component_list(Button *buttons, int size);
+void component_list(Object *objects, int size, int width, int height);
 
 // xyz_control.c
 XYZcontrol init_XYZ_controls(void);
@@ -74,7 +75,7 @@ void draw_graph(int amount_of_lines, int size_between_lines);
 // objects.c
 Selected update_selected(Object object, int index, bool is_selected, Selected curr_selected);
 void draw_model(Object o, Selected selected);
-Object load_object(char *model, char *texture, int id);
+Object load_object(char *model, char *texture, int id, char *name);
 
 
 #endif 

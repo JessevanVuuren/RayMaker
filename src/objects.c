@@ -12,21 +12,18 @@ Selected update_selected(Object object, int index, bool is_selected, Selected cu
 
 void draw_model(Object o, Selected selected) {
     DrawModel(o.model, Vector3Zero(), 1, WHITE);
-    if (selected.object.id == o.id && selected.is_selected) {
-        Vector3 axis;
-        float angle;
-        MatrixToAxisAngle(o.model.transform, &axis, &angle);
 
-        for (int i = 0; i < o.model.meshCount; i++) {
-            Model normalized_model = LoadModelFromMesh(o.model.meshes[i]);
-            DrawModelWiresEx(normalized_model, getMatrixPosition(o.model.transform), axis, angle * RAD2DEG, (Vector3){1, 1, 1}, WHITE);
-        }
+    if (selected.object.id == o.id && selected.is_selected) {
+        Material mat = LoadMaterialDefault();
+        mat.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFFDD3355);
+        DrawMesh(o.model.meshes[0], mat, o.model.transform);
     }
 }
 
-Object load_object(char *model, char *texture, int id) {
+Object load_object(char *model, char *texture, int id, char *name) {
     Object object;
     object.id = id;
+    object.name = name;
     object.model = LoadModel(model);
     object.texture = LoadTexture(texture);
     object.model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = object.texture;
