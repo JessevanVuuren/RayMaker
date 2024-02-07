@@ -53,17 +53,26 @@ void button_pressed(int button_index, EditMode *edit) {
     }
 }
 
-void component_list(Object *objects, int size, int width, int height) {
+void component_list(Object *objects, Selected selected, int size, int width, int height, Font font) {
     int border_size = 10;
-    int list_height = 350;
-    int list_width = 300;
-    int item_distance = 5;
-    DrawRectangle(width - list_width + border_size, border_size, list_width - border_size * 2, list_height - border_size * 2, GetColor(0x181818FF));
+    Vector2 box_size = {300, 350};
+    Rectangle box = {width - box_size.x + border_size, border_size, box_size.x - border_size * 2, box_size.y - border_size * 2};
+    
+    int text_distance = 20;
+    DrawRectangle(box.x, box.y, box.width, box.height, GetColor(0x181818FF));
+    Vector2 mouse = GetMousePosition();
 
     for (int i = 0; i < size; i++)
     {
         Object o = objects[i];
-        DrawText(o.name, width - list_width + border_size + item_distance, border_size + (i + 1) * item_distance, 15, WHITE);
+
+        Color background_color = GetColor(0x181818FF);
+        if (selected.object.id == o.id && selected.is_selected) {
+            background_color = GetColor(0x383838FF);
+        }
+        
+        DrawRectangle(box.x, box.y + i * text_distance, box.width, text_distance, background_color);
+        DrawTextEx(font, o.name, (Vector2){box.x + 5, border_size + i * text_distance}, 20, 2, WHITE);
     }
     
 

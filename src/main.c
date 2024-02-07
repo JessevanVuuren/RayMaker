@@ -26,9 +26,12 @@ Vector3 origin = {0};
 bool mouse_is_in_ui_element(Rectangle box[], int size) {
     Vector2 pos = GetMousePosition();
     for (int i = 0; i < size; i++) {
-        if (pos.x > box[i].x && pos.x < box[i].width && pos.y > box[i].y && pos.y < box[i].height) return true;
+        if (pos.x > box[i].x && pos.x < box[i].x + box[i].width && pos.y > box[i].y && pos.y < box[i].y + box[i].height) return true;
     }
     return false;
+}
+
+Rectangle *update_ui_box(Rectangle box[], int size, int new_width, int new_height) {
 }
 
 
@@ -39,6 +42,7 @@ int main() {
     InitWindow(WIDTH, HEIGHT, "RayMaker");
     SetExitKey(0);
 
+    Font segoe_font = LoadFont("resources/segoe-ui.ttf");
 
     Object *objects = NULL;
     Button *buttons = NULL;
@@ -58,6 +62,7 @@ int main() {
     int selected_button_index = 0;
 
     arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1, "church1"));
+    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 2, "church2"));
 
     Selected selected = {0};
 
@@ -98,11 +103,7 @@ int main() {
             cam.up = camera_start_up;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL)) {
-            if (mouse_is_in_ui_element(ui_bounding_box, ui_bounding_box_size)) {
-                printf("in ui\n");
-            };
-
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && !mouse_is_in_ui_element(ui_bounding_box, ui_bounding_box_size)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
             bool dit_not_hit = true;
 
@@ -210,7 +211,7 @@ int main() {
             }
              
             render_buttons(buttons, arrlen(buttons));
-            component_list(objects, arrlen(objects), current_width, current_height);
+            component_list(objects, selected, arrlen(objects), current_width, current_height, segoe_font);
         EndTextureMode();
 
         BeginDrawing();
@@ -221,32 +222,32 @@ int main() {
         // clang-format on
     }
 
-    for (int i = 0; i < arrlen(objects); i++)
-        UnloadModel(objects[i].model);
-    for (int i = 0; i < arrlen(objects); i++)
-        UnloadTexture(objects[i].texture);
+    // for (int i = 0; i < arrlen(objects); i++)
+    //     UnloadModel(objects[i].model);
+    // for (int i = 0; i < arrlen(objects); i++)
+    //     UnloadTexture(objects[i].texture);
 
-    for (int i = 0; i < arrlen(buttons); i++)
-        UnloadImage(buttons[i].img);
-    for (int i = 0; i < arrlen(buttons); i++)
-        UnloadTexture(buttons[i].texture);
+    // for (int i = 0; i < arrlen(buttons); i++)
+    //     UnloadImage(buttons[i].img);
+    // for (int i = 0; i < arrlen(buttons); i++)
+    //     UnloadTexture(buttons[i].texture);
 
-    UnloadMesh(xyz_control.hidden_box);
-    UnloadMesh(xyz_control.x.hit_box.mesh);
-    UnloadMesh(xyz_control.y.hit_box.mesh);
-    UnloadMesh(xyz_control.z.hit_box.mesh);
+    // UnloadMesh(xyz_control.hidden_box);
+    // UnloadMesh(xyz_control.x.hit_box.mesh);
+    // UnloadMesh(xyz_control.y.hit_box.mesh);
+    // UnloadMesh(xyz_control.z.hit_box.mesh);
 
-    UnloadMesh(xyz_control.x.rotation_box.mesh);
-    UnloadMaterial(xyz_control.x.rotation_box.material);
-    UnloadMesh(xyz_control.y.rotation_box.mesh);
-    UnloadMaterial(xyz_control.y.rotation_box.material);
-    UnloadMesh(xyz_control.z.rotation_box.mesh);
-    UnloadMaterial(xyz_control.z.rotation_box.material);
+    // UnloadMesh(xyz_control.x.rotation_box.mesh);
+    // UnloadMaterial(xyz_control.x.rotation_box.material);
+    // UnloadMesh(xyz_control.y.rotation_box.mesh);
+    // UnloadMaterial(xyz_control.y.rotation_box.material);
+    // UnloadMesh(xyz_control.z.rotation_box.mesh);
+    // UnloadMaterial(xyz_control.z.rotation_box.material);
 
 
-    UnloadRenderTexture(ui_layer);
-    UnloadRenderTexture(world_layer);
-    UnloadRenderTexture(xyz_layer);
+    // UnloadRenderTexture(ui_layer);
+    // UnloadRenderTexture(world_layer);
+    // UnloadRenderTexture(xyz_layer);
     CloseWindow();
 
     return 0;

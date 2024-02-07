@@ -64,7 +64,7 @@ typedef struct {
 Button load_button(char *img_path, char *name, int x, int y);
 void render_buttons(Button *buttons, int size);
 void button_pressed(int button_index, EditMode *edit);
-void component_list(Object *objects, int size, int width, int height);
+void component_list(Object *objects, Selected selected, int size, int width, int height, Font font);
 
 // xyz_control.c
 XYZcontrol init_XYZ_controls(void);
