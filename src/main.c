@@ -15,7 +15,8 @@
 #define HEIGHT 800
 #define WIDTH 1200
 
-#define CAMERA_SPEED 0.01
+#define CAM_ROT_SPEED 0.01
+#define CAM_MOVE_SPEED .2
 #define ZOOM_SPEED 1
 
 
@@ -31,7 +32,11 @@ bool mouse_is_in_ui_element(Rectangle box[], int size) {
     return false;
 }
 
-Rectangle *update_ui_box(Rectangle box[], int size, int new_width, int new_height) {
+Rectangle *update_ui_box(int new_width, int new_height, int size) {
+    Rectangle *ui_box_list = malloc(size * sizeof(Rectangle));
+    ui_box_list[0] = (Rectangle){0, 0, 60, new_height};
+    ui_box_list[1] = (Rectangle){new_width - 300, 0, 300, 350};
+    return ui_box_list;
 }
 
 
@@ -47,10 +52,8 @@ int main() {
     Object *objects = NULL;
     Button *buttons = NULL;
 
-    Rectangle ui_bounding_box[] = {
-        {0, 0, 60, HEIGHT},
-        {WIDTH - 300, 0, 300, 350}};
-    int ui_bounding_box_size = sizeof(ui_bounding_box) / sizeof(ui_bounding_box[0]);
+    int ui_bounding_size = 2;
+    Rectangle *ui_bounding_box = update_ui_box(WIDTH, HEIGHT, ui_bounding_size);
 
     int current_width = WIDTH;
     int current_height = HEIGHT;
@@ -61,14 +64,17 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1, "church1"));
-    arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 2, "church2"));
+    // arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1, "church1"));
+    // arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 2, "church2"));
 
     Selected selected = {0};
 
     EditMode control_mode = MOVE;
 
     XYZcontrol xyz_control = init_XYZ_controls();
+
+    Mesh mesh = GenMeshPlane(10, 10, 10, 10);
+
 
     RenderTexture2D ui_layer = LoadRenderTexture(WIDTH, HEIGHT);
     RenderTexture2D xyz_layer = LoadRenderTexture(WIDTH, HEIGHT);
@@ -82,16 +88,20 @@ int main() {
             ui_layer = LoadRenderTexture(current_width, current_height);
             xyz_layer = LoadRenderTexture(current_width, current_height);
             world_layer = LoadRenderTexture(current_width, current_height);
+
+            ui_bounding_box = update_ui_box(current_width, current_height, ui_bounding_size);
         }
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) {
+        if (IsKeyDown(KEY_LEFT_CONTROL)) {
             Vector2 mouseDelta = GetMouseDelta();
+            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
 
-            CameraYaw(&cam, -mouseDelta.x * CAMERA_SPEED, true);
-            CameraPitch(&cam, -mouseDelta.y * CAMERA_SPEED, true, true, false);
+                CameraYaw(&cam, -mouseDelta.x * CAM_ROT_SPEED, true);
+                CameraPitch(&cam, -mouseDelta.y * CAM_ROT_SPEED, true, true, false);
+            }
         }
 
         if (IsKeyPressed(KEY_ESCAPE)) {
@@ -103,7 +113,7 @@ int main() {
             cam.up = camera_start_up;
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && !mouse_is_in_ui_element(ui_bounding_box, ui_bounding_box_size)) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && !mouse_is_in_ui_element(ui_bounding_box, ui_bounding_size)) {
             Ray ray = GetMouseRay(GetMousePosition(), cam);
             bool dit_not_hit = true;
 
@@ -153,10 +163,12 @@ int main() {
 
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
-            xyz_control.x.ray.hit = false;
-            xyz_control.y.ray.hit = false;
-            xyz_control.z.ray.hit = false;
+            if (arrlen(objects) > 0) {
+                selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
+                xyz_control.x.ray.hit = false;
+                xyz_control.y.ray.hit = false;
+                xyz_control.z.ray.hit = false;
+            }
         }
 
         // clang-format off
@@ -187,6 +199,18 @@ int main() {
                     objects[selected.index].model.transform = new_position;
                 }
 
+                // if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+
+                    Vector3 direction = Vector3Subtract(cam.position, Vector3Zero());
+                    float yaw = atan2f(direction.x, direction.z);
+                    float pitch = atan2f(sqrtf(direction.x * direction.x + direction.z * direction.z), direction.y);
+                    Matrix m = MatrixRotateXYZ((Vector3){ pitch, 0, -yaw });
+
+                    Material mat = LoadMaterialDefault();
+                    mat.maps[MATERIAL_MAP_DIFFUSE].color = PURPLE;
+                    DrawMesh(mesh, mat, m);
+                // }
+
                 Vector3 edit_pos = origin;
 
                 for (int i = 0; i < arrlen(objects); i++) draw_model(objects[i], selected);
@@ -204,7 +228,7 @@ int main() {
         EndTextureMode();
 
         BeginTextureMode(ui_layer);
-            for (int i = 0; i < ui_bounding_box_size; i++)
+            for (int i = 0; i < ui_bounding_size; i++)
             {
                 Rectangle box = ui_bounding_box[i];
                 DrawRectangle(box.x,box.y, box.width, box.height, GetColor(0x282828FF));

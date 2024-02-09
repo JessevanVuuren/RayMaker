@@ -146,9 +146,11 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
 
     if (mode == SCALE) {
         offset_current_axis.z = -offset_current_axis.z;
+        manipulated_matrix = selected_object.object.model.transform;
         Vector3 add_base_one = Vector3AddValue(offset_current_axis, 1);
         Matrix matrix_scaled_up = MatrixScale(add_base_one.x, add_base_one.y, add_base_one.z);
-        manipulated_matrix = MatrixMultiply(selected_object.object.model.transform, matrix_scaled_up);
+        Matrix matrix_with_rotation = MatrixMultiply(selected_object.object.model.transform, matrix_scaled_up);
+        CopyRotationMatrix(&matrix_with_rotation, &manipulated_matrix);
     }
     return manipulated_matrix;
 }

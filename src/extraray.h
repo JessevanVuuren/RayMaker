@@ -174,6 +174,12 @@ static inline void CopyRotationMatrix(Matrix *source, Matrix *target) {
     target->m10 = source->m10;
 }
 
+static inline void CopyScaleMatrix(Matrix *source, Matrix *target) {
+    target->m0 = source->m0;
+    target->m5 = source->m5;
+    target->m10 = source->m10;
+}
+
 static inline void setMatrixPostion(Matrix *source, Vector3 pos) {
     source->m12 = pos.x;
     source->m13 = pos.y;
