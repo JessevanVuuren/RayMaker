@@ -1,1 +1,1 @@
-gcc -I./lib/raylib/ -I./include/ -I./lib/stb/ -L./lib/raylib/ -L./lib/stb/ ./test/test.c -o ./test/test.exe -lraylib -lopengl32 -lgdi32 -pthread -lwinmm -Wall && .\test\test.exe
+gcc -o MyProgram test.c -lcomdlg32 && .\MyProgram.exe
