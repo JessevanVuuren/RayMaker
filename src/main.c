@@ -7,47 +7,32 @@
 #include "raymath.h"
 #include "rcamera.h"
 
+#define STB_DS_IMPLEMENTATION
 #include "components.h"
 
-#define STB_DS_IMPLEMENTATION
-#include "stb_ds.h"
+
 
 #define HEIGHT 800
 #define WIDTH 1200
 
-#define CAM_ROT_SPEED 0.01
-#define CAM_MOVE_SPEED .2
+#define CAM_ROT_SPEED 0.007
+#define CAM_MOVE_SPEED .05
 #define ZOOM_SPEED 1
 
+#define SUPPORT_MODULE_RMODELS
 
-Vector3 camera_start_pos = {10, 10, -10};
-Vector3 camera_start_up = {0, 1, 0};
+Vector3 camera_start_pos = {20, 20, -20};
 Vector3 origin = {0};
 
-bool mouse_is_in_ui_element(Rectangle box[], int size) {
-    Vector2 pos = GetMousePosition();
-    for (int i = 0; i < size; i++) {
-        if (pos.x > box[i].x && pos.x < box[i].x + box[i].width && pos.y > box[i].y && pos.y < box[i].y + box[i].height) return true;
-    }
-    return false;
-}
-
-Rectangle *update_ui_box(int new_width, int new_height, int size) {
-    Rectangle *ui_box_list = malloc(size * sizeof(Rectangle));
-    ui_box_list[0] = (Rectangle){0, 0, 60, new_height};
-    ui_box_list[1] = (Rectangle){new_width - 300, 0, 300, 350};
-    return ui_box_list;
-}
-
-
 int main() {
-    Camera3D cam = {.fovy = 90, .position = camera_start_pos, .target = origin, .projection = CAMERA_PERSPECTIVE, .up = camera_start_up};
+    Camera3D cam = {.fovy = 90, .position = camera_start_pos, .target = origin, .projection = CAMERA_PERSPECTIVE, .up = (Vector3){0, 1, 0}};
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(WIDTH, HEIGHT, "RayMaker");
     SetExitKey(0);
 
-    Font segoe_font = LoadFont("resources/segoe-ui.ttf");
+    // Font segoe_font = LoadFont("resources/segoe-ui.ttf");
+    Font segoe_font = LoadFontEx("resources/segoe-ui.ttf", 200, 0, 0);
 
     Object *objects = NULL;
     Button *buttons = NULL;
@@ -64,8 +49,8 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    // arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 1, "church1"));
-    // arrput(objects, load_object("resources/models/church.obj", "resources/models/church_diffuse.png", 2, "church2"));
+    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
+    load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
 
     Selected selected = {0};
 
@@ -73,12 +58,11 @@ int main() {
 
     XYZcontrol xyz_control = init_XYZ_controls();
 
-    Mesh mesh = GenMeshPlane(10, 10, 10, 10);
-
 
     RenderTexture2D ui_layer = LoadRenderTexture(WIDTH, HEIGHT);
     RenderTexture2D xyz_layer = LoadRenderTexture(WIDTH, HEIGHT);
     RenderTexture2D world_layer = LoadRenderTexture(WIDTH, HEIGHT);
+
     while (!WindowShouldClose()) {
 
         if (IsWindowResized()) {
@@ -95,14 +79,60 @@ int main() {
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&cam, -dist * ZOOM_SPEED);
 
-        if (IsKeyDown(KEY_LEFT_CONTROL)) {
-            Vector2 mouseDelta = GetMouseDelta();
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        Vector3 direction = Vector3Subtract(cam.target, cam.position);
+        direction = Vector3Normalize(direction);
 
-                CameraYaw(&cam, -mouseDelta.x * CAM_ROT_SPEED, true);
-                CameraPitch(&cam, -mouseDelta.y * CAM_ROT_SPEED, true, true, false);
+        Vector3 newTarget = Vector3Add(cam.position, Vector3Scale(direction, 1.1));
+        cam.target = newTarget;
+
+        if (!mouse_is_in_ui_elements(ui_bounding_box, ui_bounding_size)) {
+            Vector2 mouseDelta = GetMouseDelta();
+
+            if (IsKeyDown(KEY_LEFT_CONTROL)) {
+                if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+
+                    CameraYaw(&cam, -mouseDelta.x * CAM_ROT_SPEED, true);
+                    CameraPitch(&cam, -mouseDelta.y * CAM_ROT_SPEED, true, true, false);
+                }
+            }
+
+
+            if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+                CameraMoveRight(&cam, -GetMouseDelta().x * CAM_MOVE_SPEED, false);
+                CameraMoveUp(&cam, GetMouseDelta().y * CAM_MOVE_SPEED);
+            }
+
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL)) {
+                Ray ray = GetMouseRay(GetMousePosition(), cam);
+                bool dit_not_hit = true;
+
+                if (selected.is_selected) {
+                    if (control_mode != ROTATE) {
+                        xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
+                        xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
+                        xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
+                    } else {
+                        xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.rotation_box.mesh, xyz_control.x.rotation_box.matrix);
+                        xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.rotation_box.mesh, xyz_control.y.rotation_box.matrix);
+                        xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.rotation_box.mesh, xyz_control.z.rotation_box.matrix);
+                    }
+                }
+
+                for (int i = 0; i < arrlen(objects); i++) {
+
+                    RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
+                    // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
+                    if (box.hit) {
+                        dit_not_hit = false;
+                        selected = update_selected(objects[i], i, true, selected);
+                    }
+                    if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
+                        selected.is_selected = false;
+                    }
+                }
             }
         }
+
 
         if (IsKeyPressed(KEY_ESCAPE)) {
             selected.is_selected = false;
@@ -110,37 +140,7 @@ int main() {
 
         if (IsKeyPressed(KEY_R)) {
             cam.position = camera_start_pos;
-            cam.up = camera_start_up;
-        }
-
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !IsKeyDown(KEY_LEFT_CONTROL) && !mouse_is_in_ui_element(ui_bounding_box, ui_bounding_size)) {
-            Ray ray = GetMouseRay(GetMousePosition(), cam);
-            bool dit_not_hit = true;
-
-            if (selected.is_selected) {
-                if (control_mode != ROTATE) {
-                    xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.hit_box.mesh, xyz_control.x.hit_box.matrix);
-                    xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.hit_box.mesh, xyz_control.y.hit_box.matrix);
-                    xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.hit_box.mesh, xyz_control.z.hit_box.matrix);
-                } else {
-                    xyz_control.x.ray = GetRayCollisionMesh(ray, xyz_control.x.rotation_box.mesh, xyz_control.x.rotation_box.matrix);
-                    xyz_control.y.ray = GetRayCollisionMesh(ray, xyz_control.y.rotation_box.mesh, xyz_control.y.rotation_box.matrix);
-                    xyz_control.z.ray = GetRayCollisionMesh(ray, xyz_control.z.rotation_box.mesh, xyz_control.z.rotation_box.matrix);
-                }
-            }
-
-            for (int i = 0; i < arrlen(objects); i++) {
-
-                RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
-                // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
-                if (box.hit) {
-                    dit_not_hit = false;
-                    selected = update_selected(objects[i], i, true, selected);
-                }
-                if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
-                    selected.is_selected = false;
-                }
-            }
+            cam.up = (Vector3){0, 1, 0};
         }
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -159,8 +159,6 @@ int main() {
                 button_pressed(selected_button_index, &control_mode);
             }
         }
-
-
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (arrlen(objects) > 0) {
@@ -199,20 +197,7 @@ int main() {
                     objects[selected.index].model.transform = new_position;
                 }
 
-                // if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-
-                    Vector3 direction = Vector3Subtract(cam.position, Vector3Zero());
-                    float yaw = atan2f(direction.x, direction.z);
-                    float pitch = atan2f(sqrtf(direction.x * direction.x + direction.z * direction.z), direction.y);
-                    Matrix m = MatrixRotateXYZ((Vector3){ pitch, 0, -yaw });
-
-                    Material mat = LoadMaterialDefault();
-                    mat.maps[MATERIAL_MAP_DIFFUSE].color = PURPLE;
-                    DrawMesh(mesh, mat, m);
-                // }
-
                 Vector3 edit_pos = origin;
-
                 for (int i = 0; i < arrlen(objects); i++) draw_model(objects[i], selected);
                 if (selected.is_selected) edit_pos = getMatrixPosition(objects[selected.index].model.transform);
                 
@@ -235,7 +220,7 @@ int main() {
             }
              
             render_buttons(buttons, arrlen(buttons));
-            component_list(objects, selected, arrlen(objects), current_width, current_height, segoe_font);
+            component_list(objects, selected, current_width, current_height, segoe_font);
         EndTextureMode();
 
         BeginDrawing();
@@ -245,34 +230,8 @@ int main() {
         EndDrawing();
         // clang-format on
     }
-
-    // for (int i = 0; i < arrlen(objects); i++)
-    //     UnloadModel(objects[i].model);
-    // for (int i = 0; i < arrlen(objects); i++)
-    //     UnloadTexture(objects[i].texture);
-
-    // for (int i = 0; i < arrlen(buttons); i++)
-    //     UnloadImage(buttons[i].img);
-    // for (int i = 0; i < arrlen(buttons); i++)
-    //     UnloadTexture(buttons[i].texture);
-
-    // UnloadMesh(xyz_control.hidden_box);
-    // UnloadMesh(xyz_control.x.hit_box.mesh);
-    // UnloadMesh(xyz_control.y.hit_box.mesh);
-    // UnloadMesh(xyz_control.z.hit_box.mesh);
-
-    // UnloadMesh(xyz_control.x.rotation_box.mesh);
-    // UnloadMaterial(xyz_control.x.rotation_box.material);
-    // UnloadMesh(xyz_control.y.rotation_box.mesh);
-    // UnloadMaterial(xyz_control.y.rotation_box.material);
-    // UnloadMesh(xyz_control.z.rotation_box.mesh);
-    // UnloadMaterial(xyz_control.z.rotation_box.material);
-
-
-    // UnloadRenderTexture(ui_layer);
-    // UnloadRenderTexture(world_layer);
-    // UnloadRenderTexture(xyz_layer);
     CloseWindow();
+  
 
     return 0;
 }

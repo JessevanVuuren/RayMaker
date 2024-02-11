@@ -402,6 +402,8 @@ typedef struct Model {
     int boneCount;          // Number of bones
     BoneInfo *bones;        // Bones information (skeleton)
     Transform *bindPose;    // Bones base transformation (pose)
+
+    char *names[1024];
 } Model;
 
 // ModelAnimation

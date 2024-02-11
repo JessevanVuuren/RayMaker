@@ -26,6 +26,10 @@ static inline void printV(Vector3 vec) {
     printf("vec: X: %f, Y: %f, Z: %f\n", vec.x, vec.y, vec.z);
 }
 
+static inline void printVS(Vector3 vec, Vector3 vec1) {
+    printf("vec1: X: %f, Y: %f, Z: %f - vec2: X: %f, Y: %f, Z: %f\n", vec.x, vec.y, vec.z, vec1.x, vec1.y, vec1.z);
+}
+
 static inline float getAxisValue(Vector3 axis, Vector3 vec) {
     float value = 0;
     if (axis.x == 1) value += vec.x;
