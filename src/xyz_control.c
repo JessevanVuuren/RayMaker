@@ -33,13 +33,13 @@ XYZcontrol init_XYZ_controls() {
     xyz.z.hit_box.mesh = GenMeshPlane(.6, 7.5, 1, 1);
 
     xyz.x.rotation_box.material = LoadMaterialDefault();
-    xyz.x.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
+    xyz.x.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF00FF);
 
     xyz.y.rotation_box.material = LoadMaterialDefault();
-    xyz.y.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x00FF00FF);
+    xyz.y.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FFFF);
 
     xyz.z.rotation_box.material = LoadMaterialDefault();
-    xyz.z.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0x0000FFFF);
+    xyz.z.rotation_box.material.maps[MATERIAL_MAP_DIFFUSE].color = GetColor(0xFF0000FF);
 
     xyz.x.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);
     xyz.y.rotation_box.mesh = GenMeshRing(.1, 7.4, 7.8, 60);

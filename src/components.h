@@ -61,7 +61,10 @@ typedef struct {
     Collection collection;
 } Object;
 
-
+typedef struct {
+    char text[20];
+    bool is_selected;
+} InputText;
 
 typedef struct {
     int index;
@@ -78,7 +81,7 @@ void button_pressed(int button_index, EditMode *edit);
 void component_list(Object *objects, Selected selected, int width, int height, Font font);
 bool mouse_is_in_ui_elements(Rectangle box[], int size);
 Rectangle *update_ui_box(int new_width, int new_height, int size);
-void matrix_display();
+void matrix_display(Selected selected, Object *objects, InputText *matrix_input, Font font);
 
 // xyz_control.c
 XYZcontrol init_XYZ_controls(void);

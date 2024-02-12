@@ -42,6 +42,15 @@ static inline float Vector3Sum(Vector3 sum) {
     return sum.x + sum.y + sum.z;
 }
 
+static inline Vector3 GetScaleFromMatrix(Matrix mat) {
+    Vector3 scale;
+    scale.x = sqrtf(mat.m0 * mat.m0 + mat.m1 * mat.m1 + mat.m2 * mat.m2);
+    scale.y = sqrtf(mat.m4 * mat.m4 + mat.m5 * mat.m5 + mat.m6 * mat.m6);
+    scale.z = sqrtf(mat.m8 * mat.m8 + mat.m9 * mat.m9 + mat.m10 * mat.m10);
+
+    return scale;
+}
+
 static inline float ExtractRotationAngleFromMatrix(Matrix mat) {
     float trace = mat.m0 + mat.m5 + mat.m10;    // Sum of the diagonal elements
     float angle = acosf((trace - 1.0f) / 2.0f); // angle in radians

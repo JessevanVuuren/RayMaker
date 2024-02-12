@@ -89,11 +89,10 @@ void display_item(Rectangle box, char *name, int object_index, Font font, int in
         background_color = GetColor(0x484848FF);
     }
     DrawRectangleRec(rec, background_color);
-    
+
     if (is_child) {
         box.x += 10;
-        DrawLine(rec.x + 7.5, rec.y , rec.x + 7.5, rec.y + text_distance, GetColor(0x484848FF));
-        
+        DrawLine(rec.x + 7.5, rec.y, rec.x + 7.5, rec.y + text_distance, GetColor(0x484848FF));
     }
 
     DrawTextEx(font, name, (Vector2){box.x + 5, box.y + index * text_distance}, 20, 2, WHITE);
@@ -122,7 +121,7 @@ void component_list(Object *objects, Selected selected, int width, int height, F
             collection_offset += 1;
             old_collection_id = o.collection.id;
             collection_set = true;
-            display_item(box, o.collection.name, -1, font, o.collection.id, selected, mouse, text_distance, false);    
+            display_item(box, o.collection.name, -1, font, o.collection.id, selected, mouse, text_distance, false);
         }
 
         if (old_collection_id != o.collection.id) {
@@ -134,13 +133,89 @@ void component_list(Object *objects, Selected selected, int width, int height, F
     EndScissorMode();
 }
 
-void matrix_display() {
-    Rectangle rect = {
-        .x = 1000,
-        .y = 360,
-        .width = 100,
-        .height = 100,
-    };
-    // Rectangle bounds, const char *title, const char *message, const char *buttons, char *text, int textMaxSize, bool *secretViewActive); 
-    GuiTextInputBox(rect, "hello", "hello", "hhello", "sdf", 10, false);
+float input_value_matrix(Selected selected, InputText *input_text, Vector2 mouse_pos, Rectangle rect, float value, char *default_text) {
+    int text_size = sizeof input_text->text;
+
+    if (selected.is_selected) {
+        if (input_text->is_selected == false) {
+            input_text->is_selected = mouse_in_rec(mouse_pos, rect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+            if (input_text->is_selected)
+                snprintf(input_text->text, text_size, "%s", "\0");
+            else
+                snprintf(input_text->text, text_size, "%f", value);
+        }
+    } else {
+        snprintf(input_text->text, text_size, "%s", default_text);
+        input_text->is_selected = false;
+    }
+
+    GuiTextBox(rect, input_text->text, text_size, input_text->is_selected);
+
+    float number;
+    sscanf(input_text->text, "%f", &number);
+    return number;
+}
+
+void apply_translation(Rectangle rect, InputText *in, float *current_pos, float new_pos) {
+    rect.x += 110;
+    rect.width = 90;
+
+    if (GuiButton(rect, "Apply")) {
+        *current_pos = new_pos;
+        in->is_selected = false;
+    }
+}
+
+void apply_scale(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 scale) {
+    rect.x += 110;
+    rect.width = 90;
+
+    if (GuiButton(rect, "Apply")) {
+
+        *matrix = MatrixAdd(MatrixScale(scale.x, scale.y, scale.z), *matrix);
+
+        in->is_selected = false;
+    }
+}
+
+void matrix_display(Selected selected, Object *objects, InputText *matrix_input, Font font) {
+    Vector2 input_size = {100, 25};
+    Vector2 mouse_pos = GetMousePosition();
+    Rectangle rect = {.x = 980, .y = 370, .width = input_size.x, .height = input_size.y};
+
+    Matrix matrix = objects[selected.index].model.transform;
+    Vector3 rotation = getEulerRotationFromMatrix(matrix);
+    Vector3 scale = GetScaleFromMatrix(matrix);
+
+
+    float translate_X = input_value_matrix(selected, &matrix_input[0], mouse_pos, rect, matrix.m12, "X position");
+    apply_translation(rect, &matrix_input[0], &objects[selected.index].model.transform.m12, translate_X);
+
+    rect.y += 30;
+    float translate_Y = input_value_matrix(selected, &matrix_input[1], mouse_pos, rect, matrix.m13, "Y position");
+    apply_translation(rect, &matrix_input[1], &objects[selected.index].model.transform.m13, translate_Y);
+
+    rect.y += 30;
+    float translate_Z = input_value_matrix(selected, &matrix_input[2], mouse_pos, rect, matrix.m14, "Z position");
+    apply_translation(rect, &matrix_input[2], &objects[selected.index].model.transform.m14, translate_Z);
+
+
+    rect.y += 40;
+    float rotate_X = input_value_matrix(selected, &matrix_input[3], mouse_pos, rect, rotation.x * RAD2DEG, "X rotation");
+    rect.y += 30;
+    float rotate_Y = input_value_matrix(selected, &matrix_input[4], mouse_pos, rect, rotation.y * RAD2DEG * -1, "Y rotation");
+    rect.y += 30;
+    float rotate_Z = input_value_matrix(selected, &matrix_input[5], mouse_pos, rect, rotation.z * RAD2DEG, "Z rotation");
+
+    rect.y += 40;
+    float scale_X = input_value_matrix(selected, &matrix_input[6], mouse_pos, rect, scale.x, "X scale");
+    apply_scale(rect, &matrix_input[6], selected, &objects[selected.index].model.transform, (Vector3){scale_X, 1, 1});
+
+    rect.y += 30;
+    float scale_Y = input_value_matrix(selected, &matrix_input[7], mouse_pos, rect, scale.y, "Y scale");
+    apply_scale(rect, &matrix_input[7], selected, &objects[selected.index].model.transform, (Vector3){0, scale_Y, 0});
+
+    rect.y += 30;
+    float scale_Z = input_value_matrix(selected, &matrix_input[8], mouse_pos, rect, scale.z, "Z scale");
+    apply_scale(rect, &matrix_input[8], selected, &objects[selected.index].model.transform, (Vector3){0, 0, scale_Z});
 }

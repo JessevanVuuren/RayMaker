@@ -31,12 +31,14 @@ int main() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(WIDTH, HEIGHT, "RayMaker");
     SetExitKey(0);
+    GuiLoadStyle("resources/styles/dark/style_dark.rgs");
 
     // Font segoe_font = LoadFont("resources/segoe-ui.ttf");
     Font segoe_font = LoadFontEx("resources/segoe-ui.ttf", 200, 0, 0);
 
     Object *objects = NULL;
     Button *buttons = NULL;
+    InputText matrix_input[9] = {0};
 
     int ui_bounding_size = 3;
     Rectangle *ui_bounding_box = update_ui_box(WIDTH, HEIGHT, ui_bounding_size);
@@ -50,8 +52,10 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
+    // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
     load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
+    load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
+    objects[1].model.transform = MatrixTranslate(20, 0, 0);
 
     Selected selected = {0};
 
@@ -89,13 +93,13 @@ int main() {
         if (!mouse_is_in_ui_elements(ui_bounding_box, ui_bounding_size)) {
             Vector2 mouseDelta = GetMouseDelta();
 
-            if (IsKeyDown(KEY_LEFT_CONTROL)) {
-                if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
 
-                    CameraYaw(&cam, -mouseDelta.x * CAM_ROT_SPEED, true);
-                    CameraPitch(&cam, -mouseDelta.y * CAM_ROT_SPEED, true, true, false);
-                }
+            if ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) && IsKeyDown(KEY_LEFT_CONTROL)) || IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+
+                CameraYaw(&cam, -mouseDelta.x * CAM_ROT_SPEED, true);
+                CameraPitch(&cam, -mouseDelta.y * CAM_ROT_SPEED, true, true, false);
             }
+
 
 
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -223,18 +227,18 @@ int main() {
             render_buttons(buttons, arrlen(buttons));
             component_list(objects, selected, current_width, current_height, segoe_font);
 
-            matrix_display();
         EndTextureMode();
 
         BeginDrawing();
             DrawTextureRec(world_layer.texture, (Rectangle){0, 0, world_layer.texture.width, -world_layer.texture.height}, (Vector2){0, 0}, WHITE);
             DrawTextureRec(xyz_layer.texture, (Rectangle){0, 0, xyz_layer.texture.width, -xyz_layer.texture.height}, (Vector2){0, 0}, WHITE);
             DrawTextureRec(ui_layer.texture, (Rectangle){0, 0, ui_layer.texture.width, -ui_layer.texture.height}, (Vector2){0, 0}, WHITE);
+            matrix_display(selected, objects, matrix_input, segoe_font);
         EndDrawing();
         // clang-format on
     }
     CloseWindow();
-  
+
 
     return 0;
 }
