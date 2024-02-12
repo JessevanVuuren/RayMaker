@@ -65,6 +65,7 @@ Rectangle *update_ui_box(int new_width, int new_height, int size) {
     Rectangle *ui_box_list = malloc(size * sizeof(Rectangle));
     ui_box_list[0] = (Rectangle){0, 0, 60, new_height};
     ui_box_list[1] = (Rectangle){new_width - 300, 0, 300, 340};
+    ui_box_list[2] = (Rectangle){new_width - 300, 350, 300, 340};
     return ui_box_list;
 }
 
@@ -131,4 +132,15 @@ void component_list(Object *objects, Selected selected, int width, int height, F
         display_item(box, o.name, o.id, font, i + collection_offset, selected, mouse, text_distance, collection_set);
     }
     EndScissorMode();
+}
+
+void matrix_display() {
+    Rectangle rect = {
+        .x = 1000,
+        .y = 360,
+        .width = 100,
+        .height = 100,
+    };
+    // Rectangle bounds, const char *title, const char *message, const char *buttons, char *text, int textMaxSize, bool *secretViewActive); 
+    GuiTextInputBox(rect, "hello", "hello", "hhello", "sdf", 10, false);
 }

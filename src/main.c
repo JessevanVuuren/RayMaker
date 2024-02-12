@@ -7,6 +7,7 @@
 #include "raymath.h"
 #include "rcamera.h"
 
+#define RAYGUI_IMPLEMENTATION
 #define STB_DS_IMPLEMENTATION
 #include "components.h"
 
@@ -37,7 +38,7 @@ int main() {
     Object *objects = NULL;
     Button *buttons = NULL;
 
-    int ui_bounding_size = 2;
+    int ui_bounding_size = 3;
     Rectangle *ui_bounding_box = update_ui_box(WIDTH, HEIGHT, ui_bounding_size);
 
     int current_width = WIDTH;
@@ -221,6 +222,8 @@ int main() {
              
             render_buttons(buttons, arrlen(buttons));
             component_list(objects, selected, current_width, current_height, segoe_font);
+
+            matrix_display();
         EndTextureMode();
 
         BeginDrawing();

@@ -3,6 +3,7 @@
 
 #include "raylib.h"
 #include "extraray.h"
+#include "raygui.h"
 
 #include "stb_ds.h"
 
@@ -77,6 +78,7 @@ void button_pressed(int button_index, EditMode *edit);
 void component_list(Object *objects, Selected selected, int width, int height, Font font);
 bool mouse_is_in_ui_elements(Rectangle box[], int size);
 Rectangle *update_ui_box(int new_width, int new_height, int size);
+void matrix_display();
 
 // xyz_control.c
 XYZcontrol init_XYZ_controls(void);
