@@ -171,8 +171,19 @@ void apply_scale(Rectangle rect, InputText *in, Selected selected, Matrix *matri
     rect.width = 90;
 
     if (GuiButton(rect, "Apply")) {
+        // *matrix = 
+        Quaternion q = QuaternionFromMatrix(*matrix);
+        Matrix upped = MatrixScale(scale.x, scale.y, scale.z);
+        *matrix = QuaternionToMatrix(q);
+        // *matrix = 
+        // *matrix = MatrixMultiply(upped, QuaternionToMatrix());
+        
+        // *matrix = MatrixMultiply(*matrix, MatrixIdentity());
+        // Matrix identity = MatrixMultiply(MatrixIdentity(), )
 
-        *matrix = MatrixAdd(MatrixScale(scale.x, scale.y, scale.z), *matrix);
+        
+
+        // *matrix = MatrixAdd(, *matrix);
 
         in->is_selected = false;
     }
@@ -209,13 +220,13 @@ void matrix_display(Selected selected, Object *objects, InputText *matrix_input,
 
     rect.y += 40;
     float scale_X = input_value_matrix(selected, &matrix_input[6], mouse_pos, rect, scale.x, "X scale");
-    apply_scale(rect, &matrix_input[6], selected, &objects[selected.index].model.transform, (Vector3){scale_X, 1, 1});
+    apply_scale(rect, &matrix_input[6], selected, &objects[selected.index].model.transform, (Vector3){scale_X, scale.y, scale.z});
 
     rect.y += 30;
     float scale_Y = input_value_matrix(selected, &matrix_input[7], mouse_pos, rect, scale.y, "Y scale");
-    apply_scale(rect, &matrix_input[7], selected, &objects[selected.index].model.transform, (Vector3){0, scale_Y, 0});
+    apply_scale(rect, &matrix_input[7], selected, &objects[selected.index].model.transform, (Vector3){scale.x, scale_Y, scale.z});
 
     rect.y += 30;
     float scale_Z = input_value_matrix(selected, &matrix_input[8], mouse_pos, rect, scale.z, "Z scale");
-    apply_scale(rect, &matrix_input[8], selected, &objects[selected.index].model.transform, (Vector3){0, 0, scale_Z});
+    apply_scale(rect, &matrix_input[8], selected, &objects[selected.index].model.transform, (Vector3){scale.x, scale.y, scale_Z});
 }
