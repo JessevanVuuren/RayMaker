@@ -170,35 +170,35 @@ void apply_scale(Rectangle rect, InputText *in, Selected selected, Matrix *matri
     rect.x += 110;
     rect.width = 90;
 
-    if (GuiButton(rect, "Apply")) {
-        // *matrix = 
-        Quaternion q = QuaternionFromMatrix(*matrix);
-        Matrix upped = MatrixScale(scale.x, scale.y, scale.z);
-        *matrix = QuaternionToMatrix(q);
-        // *matrix = 
-        // *matrix = MatrixMultiply(upped, QuaternionToMatrix());
-        
-        // *matrix = MatrixMultiply(*matrix, MatrixIdentity());
-        // Matrix identity = MatrixMultiply(MatrixIdentity(), )
+    if (GuiButton(rect, "Apply") && selected.is_selected) {
+        *matrix = set_matrix_scale(*matrix, scale);
+        in->is_selected = false;
+    }
+}
 
-        
+void apply_rotation(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 axis_angle) {
+    rect.x += 110;
+    rect.width = 90;
 
-        // *matrix = MatrixAdd(, *matrix);
-
+    if (GuiButton(rect, "Apply") && selected.is_selected) {
+        *matrix = set_matrix_rotation(*matrix, axis_angle);
         in->is_selected = false;
     }
 }
 
 void matrix_display(Selected selected, Object *objects, InputText *matrix_input, Font font) {
+
+
     Vector2 input_size = {100, 25};
     Vector2 mouse_pos = GetMousePosition();
     Rectangle rect = {.x = 980, .y = 370, .width = input_size.x, .height = input_size.y};
 
     Matrix matrix = objects[selected.index].model.transform;
-    Vector3 rotation = getEulerRotationFromMatrix(matrix);
+    Quaternion quaternion = QuaternionFromMatrix(matrix);
+    Vector3 rotation = QuaternionToEuler(quaternion);
     Vector3 scale = GetScaleFromMatrix(matrix);
 
-
+    
     float translate_X = input_value_matrix(selected, &matrix_input[0], mouse_pos, rect, matrix.m12, "X position");
     apply_translation(rect, &matrix_input[0], &objects[selected.index].model.transform.m12, translate_X);
 
@@ -213,10 +213,13 @@ void matrix_display(Selected selected, Object *objects, InputText *matrix_input,
 
     rect.y += 40;
     float rotate_X = input_value_matrix(selected, &matrix_input[3], mouse_pos, rect, rotation.x * RAD2DEG, "X rotation");
+    apply_rotation(rect, &matrix_input[3], selected, &objects[selected.index].model.transform, (Vector3){rotate_X * DEG2RAD, rotation.y, rotation.z});
     rect.y += 30;
-    float rotate_Y = input_value_matrix(selected, &matrix_input[4], mouse_pos, rect, rotation.y * RAD2DEG * -1, "Y rotation");
+    float rotate_Y = input_value_matrix(selected, &matrix_input[4], mouse_pos, rect, rotation.y * RAD2DEG, "Y rotation");
+    apply_rotation(rect, &matrix_input[4], selected, &objects[selected.index].model.transform, (Vector3){rotation.x, rotate_Y * DEG2RAD, rotation.z});
     rect.y += 30;
     float rotate_Z = input_value_matrix(selected, &matrix_input[5], mouse_pos, rect, rotation.z * RAD2DEG, "Z rotation");
+    apply_rotation(rect, &matrix_input[5], selected, &objects[selected.index].model.transform, (Vector3){rotation.x, rotation.y, rotate_Z * DEG2RAD});
 
     rect.y += 40;
     float scale_X = input_value_matrix(selected, &matrix_input[6], mouse_pos, rect, scale.x, "X scale");
@@ -229,4 +232,5 @@ void matrix_display(Selected selected, Object *objects, InputText *matrix_input,
     rect.y += 30;
     float scale_Z = input_value_matrix(selected, &matrix_input[8], mouse_pos, rect, scale.z, "Z scale");
     apply_scale(rect, &matrix_input[8], selected, &objects[selected.index].model.transform, (Vector3){scale.x, scale.y, scale_Z});
+    
 }

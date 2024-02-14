@@ -52,8 +52,8 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
-    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
+    // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
+    load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
     load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
     objects[1].model.transform = MatrixTranslate(20, 0, 0);
 

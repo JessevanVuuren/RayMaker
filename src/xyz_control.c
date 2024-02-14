@@ -154,3 +154,34 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
     }
     return manipulated_matrix;
 }
+
+void update_position() {
+}
+
+Matrix set_matrix_scale(Matrix matrix, Vector3 scale) {
+    Vector3 X_norm = Vector3Normalize((Vector3){matrix.m0, matrix.m1, matrix.m2});
+    Vector3 Y_norm = Vector3Normalize((Vector3){matrix.m4, matrix.m5, matrix.m6});
+    Vector3 Z_norm = Vector3Normalize((Vector3){matrix.m8, matrix.m9, matrix.m10});
+
+    matrix.m0 = X_norm.x * scale.x;
+    matrix.m1 = X_norm.y * scale.x;
+    matrix.m2 = X_norm.z * scale.x;
+
+    matrix.m4 = Y_norm.x * scale.y;
+    matrix.m5 = Y_norm.y * scale.y;
+    matrix.m6 = Y_norm.z * scale.y;
+
+    matrix.m8 = Z_norm.x * scale.z;
+    matrix.m9 = Z_norm.y * scale.z;
+    matrix.m10 = Z_norm.z * scale.z;
+    return matrix;
+}
+
+Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle) {
+    Vector3 scale = GetScaleFromMatrix(matrix);
+    Vector3 translation = (Vector3){matrix.m12, matrix.m13, matrix.m14};
+
+    Quaternion rotation = QuaternionFromEuler(axis_angle.x, axis_angle.y, axis_angle.z);
+    Matrix rotation_matrix = QuaternionToMatrix(rotation);
+    return MatrixMultiply(rotation_matrix, Vector3Translate(translation));
+}

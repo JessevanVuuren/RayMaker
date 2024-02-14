@@ -94,6 +94,8 @@ Selected update_selected(Object object, int index, bool is_selected, Selected cu
 void draw_model(Object o, Selected selected);
 void load_object(Object **objects, char *model, char *texture);
 Model LoadObj(const char *filename);
+Matrix set_matrix_scale(Matrix matrix, Vector3 scale);
+Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle);
 
 #endif 
 

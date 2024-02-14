@@ -3,5 +3,7 @@
 - hide move axis you look at
 - better camera code
 - only select one input box
+- xyz control to ui layer
+- value input check on matrix input
 
 - why does inline static work??? in extraray.h
