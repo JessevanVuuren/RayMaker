@@ -49,16 +49,12 @@ typedef struct {
 } Button;
 
 typedef struct {
-    int id;
-    char *name;
-    bool is_part_of;
-} Collection;
-
-typedef struct {
     char *name;
     int id;
     Model model;
-    Collection collection;
+    bool is_collection;
+    int collection_id;
+    bool is_single_object;
 } Object;
 
 typedef struct {
@@ -71,6 +67,7 @@ typedef struct {
     Vector3 pos;
     Object object;
     bool is_selected;
+    bool is_collection;
 } Selected;
 
 
@@ -78,7 +75,7 @@ typedef struct {
 Button load_button(char *img_path, char *name, int x, int y);
 void render_buttons(Button *buttons, int size);
 void button_pressed(int button_index, EditMode *edit);
-void component_list(Object *objects, Selected selected, int width, int height, Font font);
+void component_list(Object *objects, Selected *selected, int width, int height, Font font);
 bool mouse_is_in_ui_elements(Rectangle box[], int size);
 Rectangle *update_ui_box(int new_width, int new_height, int size);
 void matrix_display(Selected selected, Object *objects, InputText *matrix_input, Font font);
@@ -90,9 +87,9 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
 void draw_graph(int amount_of_lines, int size_between_lines);
 
 // objects.c
-Selected update_selected(Object object, int index, bool is_selected, Selected curr_selected);
-void draw_model(Object o, Selected selected);
-void load_object(Object **objects, char *model, char *texture);
+Selected update_selected(Object object, int index, bool is_selected);
+void draw_models(Object *objects, Selected selected);
+void load_object(Object **objects, char *model, char *texture, char *name);
 Model LoadObj(const char *filename);
 Matrix set_matrix_scale(Matrix matrix, Vector3 scale);
 Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle);

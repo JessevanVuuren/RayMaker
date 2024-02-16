@@ -52,10 +52,11 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png");
-    load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
-    load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
-    objects[1].model.transform = MatrixTranslate(20, 0, 0);
+    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars");
+    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars2");
+    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
+    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
+    // objects[1].model.transform = MatrixTranslate(20, 0, 0);
 
     Selected selected = {0};
 
@@ -129,7 +130,7 @@ int main() {
                     // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
                     if (box.hit) {
                         dit_not_hit = false;
-                        selected = update_selected(objects[i], i, true, selected);
+                        selected = update_selected(objects[i], i, true);
                     }
                     if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
                         selected.is_selected = false;
@@ -167,7 +168,7 @@ int main() {
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (arrlen(objects) > 0) {
-                selected = update_selected(objects[selected.index], selected.index, selected.is_selected, selected);
+                selected = update_selected(objects[selected.index], selected.index, selected.is_selected);
                 xyz_control.x.ray.hit = false;
                 xyz_control.y.ray.hit = false;
                 xyz_control.z.ray.hit = false;
@@ -203,7 +204,7 @@ int main() {
                 }
 
                 Vector3 edit_pos = origin;
-                for (int i = 0; i < arrlen(objects); i++) draw_model(objects[i], selected);
+                draw_models(objects, selected);
                 if (selected.is_selected) edit_pos = getMatrixPosition(objects[selected.index].model.transform);
                 
             EndMode3D();
@@ -225,7 +226,7 @@ int main() {
             }
              
             render_buttons(buttons, arrlen(buttons));
-            component_list(objects, selected, current_width, current_height, segoe_font);
+            component_list(objects, &selected, current_width, current_height, segoe_font);
 
         EndTextureMode();
 

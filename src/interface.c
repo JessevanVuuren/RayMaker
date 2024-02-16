@@ -77,58 +77,55 @@ bool mouse_in_rec(Vector2 mouse_pos, Rectangle rec) {
     return false;
 }
 
-void display_item(Rectangle box, char *name, int object_index, Font font, int index, Selected selected, Vector2 mouse, int text_distance, bool is_child) {
-    Rectangle rec = {box.x, box.y + index * text_distance, box.width, text_distance};
+void display_item(Rectangle box, char *name, int object_index, Font font, Selected selected, int text_distance, bool is_collection) {
+    Vector2 mouse = GetMousePosition();
     Color background_color = GetColor(0x181818FF);
 
     if (selected.object.id == object_index && selected.is_selected) {
         background_color = GetColor(0x383838FF);
     }
 
-    if (mouse_in_rec(mouse, rec)) {
+    if (mouse_in_rec(mouse, box)) {
         background_color = GetColor(0x484848FF);
     }
-    DrawRectangleRec(rec, background_color);
+    DrawRectangleRec(box, background_color);
 
-    if (is_child) {
-        box.x += 10;
-        DrawLine(rec.x + 7.5, rec.y, rec.x + 7.5, rec.y + text_distance, GetColor(0x484848FF));
+    if (is_collection) {
+        box.x += 7.5;
+        DrawLine(box.x, box.y, box.x, box.y + text_distance, GetColor(0x484848FF));
     }
 
-    DrawTextEx(font, name, (Vector2){box.x + 5, box.y + index * text_distance}, 20, 2, WHITE);
+    DrawTextEx(font, name, (Vector2){box.x + 5, box.y}, 20, 2, WHITE);
 }
 
+void item_pressed(Rectangle rec, Selected *selected, Object object, int index) {
+    Vector2 mouse_pos = GetMousePosition();
 
-void component_list(Object *objects, Selected selected, int width, int height, Font font) {
+    if (mouse_in_rec(mouse_pos, rec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        *selected = update_selected(object, index, true);
+    }
+}
+
+void component_list(Object *objects, Selected *selected, int width, int height, Font font) {
     int border_size = 10;
+    int text_distance = 20;
     Vector2 box_size = {300, 340};
     Rectangle box = {width - box_size.x + border_size, border_size, box_size.x - border_size * 2, box_size.y - border_size * 2};
 
-    int text_distance = 20;
     DrawRectangle(box.x, box.y, box.width, box.height, GetColor(0x181818FF));
-    Vector2 mouse = GetMousePosition();
     // float dist = GetMouseWheelMove();
     BeginScissorMode(box.x, box.y, box.width, box.height);
     // box.y -= 50;
 
     bool collection_set = false;
-    int old_collection_id = -1;
-    int collection_offset = 0;
+
     for (int i = 0; i < arrlen(objects); i++) {
         Object o = objects[i];
+        Rectangle rec = {box.x, box.y + i * text_distance, box.width, text_distance};
 
-        if (o.collection.is_part_of == true && collection_set == false) {
-            collection_offset += 1;
-            old_collection_id = o.collection.id;
-            collection_set = true;
-            display_item(box, o.collection.name, -1, font, o.collection.id, selected, mouse, text_distance, false);
-        }
+        display_item(rec, o.name, o.id, font, *selected, text_distance, o.is_collection);
+        item_pressed(rec, selected, o, i);
 
-        if (old_collection_id != o.collection.id) {
-            collection_set = false;
-        }
-
-        display_item(box, o.name, o.id, font, i + collection_offset, selected, mouse, text_distance, collection_set);
     }
     EndScissorMode();
 }
