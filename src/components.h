@@ -52,9 +52,10 @@ typedef struct {
     char *name;
     int id;
     Model model;
-    bool is_collection;
+    bool is_part_of;
     int collection_id;
-    bool is_single_object;
+    bool is_collection;
+    int amount_of_mesh;
 } Object;
 
 typedef struct {
@@ -67,7 +68,8 @@ typedef struct {
     Vector3 pos;
     Object object;
     bool is_selected;
-    bool is_collection;
+    Matrix *matrixes;
+    int matrix_count;
 } Selected;
 
 
@@ -83,16 +85,18 @@ void matrix_display(Selected selected, Object *objects, InputText *matrix_input,
 // xyz_control.c
 XYZcontrol init_XYZ_controls(void);
 void draw_xyz_control(Vector3 target, EditMode mode, Camera3D cam, XYZcontrol *xyz);
-Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode, Object *object);
+Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode);
 void draw_graph(int amount_of_lines, int size_between_lines);
 
 // objects.c
-Selected update_selected(Object object, int index, bool is_selected);
+void update_selected(Selected *selected, Object object, int index, bool is_selected);
 void draw_models(Object *objects, Selected selected);
 void load_object(Object **objects, char *model, char *texture, char *name);
 Model LoadObj(const char *filename);
 Matrix set_matrix_scale(Matrix matrix, Vector3 scale);
 Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle);
+void move_collection(Object *objects, Selected selected, Matrix new_position);
+void update_child_matrix(Selected *selected, Object *objects, int index);
 
 #endif 
 

@@ -93,7 +93,7 @@ void draw_xyz_control(Vector3 target, EditMode mode, Camera3D cam, XYZcontrol *x
     xyz->y.hit_box.matrix = MatrixMultiply(MatrixRotateZ(-(90 * DEG2RAD)), xyz->y.hit_box.matrix);
 }
 
-Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode, Object *object) {
+Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos, AxisControl xyz, EditMode mode) {
     Selected selected_object = *selected;
     Ray ray = GetMouseRay(GetMousePosition(), cam);
 
@@ -114,10 +114,6 @@ Matrix move_object(Camera cam, Selected *selected, Mesh cube, Vector2 camera_pos
         Vector3 ww = Vector3Add(selected_object.pos, hidden_rotation_cube);
         matrix = Vector3Translate(ww);
     }
-
-    // Material mat = LoadMaterialDefault();
-    // mat.maps[MATERIAL_MAP_DIFFUSE].color = PURPLE;
-    // DrawMesh(cube, mat, matrix);
 
     Vector3 hit_point = GetRayCollisionMesh(ray, cube, matrix).point;
     Vector3 hit_point_offset = Vector3Subtract(hit_point, Vector3Multiply(xyz.axis, xyz.ray.point));
@@ -178,7 +174,6 @@ Matrix set_matrix_scale(Matrix matrix, Vector3 scale) {
 }
 
 Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle) {
-    Vector3 scale = GetScaleFromMatrix(matrix);
     Vector3 translation = (Vector3){matrix.m12, matrix.m13, matrix.m14};
 
     Quaternion rotation = QuaternionFromEuler(axis_angle.x, axis_angle.y, axis_angle.z);

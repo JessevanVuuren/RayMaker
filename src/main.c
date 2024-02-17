@@ -33,7 +33,6 @@ int main() {
     SetExitKey(0);
     GuiLoadStyle("resources/styles/dark/style_dark.rgs");
 
-    // Font segoe_font = LoadFont("resources/segoe-ui.ttf");
     Font segoe_font = LoadFontEx("resources/segoe-ui.ttf", 200, 0, 0);
 
     Object *objects = NULL;
@@ -53,9 +52,8 @@ int main() {
     int selected_button_index = 0;
 
     load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars");
-    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars2");
+    // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars2");
     // load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
-    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png");
     // objects[1].model.transform = MatrixTranslate(20, 0, 0);
 
     Selected selected = {0};
@@ -130,7 +128,7 @@ int main() {
                     // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
                     if (box.hit) {
                         dit_not_hit = false;
-                        selected = update_selected(objects[i], i, true);
+                        update_selected(&selected, objects[i], i, true);
                     }
                     if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
                         selected.is_selected = false;
@@ -168,7 +166,7 @@ int main() {
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (arrlen(objects) > 0) {
-                selected = update_selected(objects[selected.index], selected.index, selected.is_selected);
+                update_selected(&selected, objects[selected.index], selected.index, selected.is_selected);
                 xyz_control.x.ray.hit = false;
                 xyz_control.y.ray.hit = false;
                 xyz_control.z.ray.hit = false;
@@ -183,7 +181,10 @@ int main() {
                 if (xyz_control.x.ray.hit) {
                     Vector2 camera_pos = {cam.position.z, cam.position.y};
                     Mesh cube = xyz_control.hidden_box;
-                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.x, control_mode, &objects[selected.index]);
+
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.x, control_mode);
+                    move_collection(objects, selected, new_position);
+
                     objects[selected.index].model.transform = new_position;
                 }
 
@@ -191,15 +192,19 @@ int main() {
                     Vector2 camera_pos = {cam.position.x, cam.position.z};
                     Mesh cube = xyz_control.hidden_box;
 
-                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.y, control_mode, &objects[selected.index]);
-                    objects[selected.index].model.transform = new_position;
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.y, control_mode);
+                    move_collection(objects, selected, new_position);
+
+                    objects[selected.index].model.transform = new_position;                
                 }
 
                 if (xyz_control.z.ray.hit) {
                     Vector2 camera_pos = {cam.position.y, cam.position.x};
                     Mesh cube = xyz_control.hidden_box;
 
-                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.z, control_mode, &objects[selected.index]);
+                    Matrix new_position = move_object(cam, &selected, cube, camera_pos, xyz_control.z, control_mode);
+                    move_collection(objects, selected, new_position);
+                    
                     objects[selected.index].model.transform = new_position;
                 }
 

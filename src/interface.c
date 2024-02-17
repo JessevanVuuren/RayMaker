@@ -65,7 +65,7 @@ Rectangle *update_ui_box(int new_width, int new_height, int size) {
     Rectangle *ui_box_list = malloc(size * sizeof(Rectangle));
     ui_box_list[0] = (Rectangle){0, 0, 60, new_height};
     ui_box_list[1] = (Rectangle){new_width - 300, 0, 300, 340};
-    ui_box_list[2] = (Rectangle){new_width - 300, 350, 300, 340};
+    ui_box_list[2] = (Rectangle){new_width - 300, 350, 300, 325};
     return ui_box_list;
 }
 
@@ -98,11 +98,15 @@ void display_item(Rectangle box, char *name, int object_index, Font font, Select
     DrawTextEx(font, name, (Vector2){box.x + 5, box.y}, 20, 2, WHITE);
 }
 
-void item_pressed(Rectangle rec, Selected *selected, Object object, int index) {
+void item_pressed(Rectangle rec, Selected *selected, Object *objects, int index) {
     Vector2 mouse_pos = GetMousePosition();
 
     if (mouse_in_rec(mouse_pos, rec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        *selected = update_selected(object, index, true);
+        update_selected(selected, objects[index], index, true);
+
+        if (objects[index].is_collection) {
+            update_child_matrix(selected, objects, index);
+        }
     }
 }
 
@@ -117,15 +121,12 @@ void component_list(Object *objects, Selected *selected, int width, int height, 
     BeginScissorMode(box.x, box.y, box.width, box.height);
     // box.y -= 50;
 
-    bool collection_set = false;
-
     for (int i = 0; i < arrlen(objects); i++) {
         Object o = objects[i];
         Rectangle rec = {box.x, box.y + i * text_distance, box.width, text_distance};
 
-        display_item(rec, o.name, o.id, font, *selected, text_distance, o.is_collection);
-        item_pressed(rec, selected, o, i);
-
+        display_item(rec, o.name, o.id, font, *selected, text_distance, o.is_part_of);
+        item_pressed(rec, selected, objects, i);
     }
     EndScissorMode();
 }
@@ -153,81 +154,101 @@ float input_value_matrix(Selected selected, InputText *input_text, Vector2 mouse
     return number;
 }
 
-void apply_translation(Rectangle rect, InputText *in, float *current_pos, float new_pos) {
-    rect.x += 110;
+void apply_translation(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 new_pos, Object *objects) {
+    rect.x += 170;
     rect.width = 90;
 
-    if (GuiButton(rect, "Apply")) {
-        *current_pos = new_pos;
+    if (GuiButton(rect, "Apply") && selected.is_selected) {
+        matrix->m12 = new_pos.x;
+        matrix->m13 = new_pos.y;
+        matrix->m14 = new_pos.z;
+
+        if (selected.object.is_collection) {
+            move_collection(objects, selected, *matrix);
+        }
+
         in->is_selected = false;
     }
 }
 
-void apply_scale(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 scale) {
-    rect.x += 110;
+void apply_scale(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 scale, Object *objects) {
+    rect.x += 170;
     rect.width = 90;
 
     if (GuiButton(rect, "Apply") && selected.is_selected) {
         *matrix = set_matrix_scale(*matrix, scale);
+
+        if (selected.object.is_collection) {
+            move_collection(objects, selected, *matrix);
+        }
+
         in->is_selected = false;
     }
 }
 
-void apply_rotation(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 axis_angle) {
-    rect.x += 110;
+void apply_rotation(Rectangle rect, InputText *in, Selected selected, Matrix *matrix, Vector3 axis_angle, Object *objects) {
+    rect.x += 170;
     rect.width = 90;
 
     if (GuiButton(rect, "Apply") && selected.is_selected) {
         *matrix = set_matrix_rotation(*matrix, axis_angle);
+
+        if (selected.object.is_collection) {
+            move_collection(objects, selected, *matrix);
+        }
+
         in->is_selected = false;
     }
 }
 
 void matrix_display(Selected selected, Object *objects, InputText *matrix_input, Font font) {
-
-
-    Vector2 input_size = {100, 25};
+    Vector2 input_size = {160, 25};
     Vector2 mouse_pos = GetMousePosition();
-    Rectangle rect = {.x = 980, .y = 370, .width = input_size.x, .height = input_size.y};
+    Rectangle rect = {.x = GetScreenWidth() - 280, .y = 370, .width = input_size.x, .height = input_size.y};
+    DrawRectangle(GetScreenWidth() - 290, 360, 280, 305, GetColor(0x181818FF));
 
     Matrix matrix = objects[selected.index].model.transform;
     Quaternion quaternion = QuaternionFromMatrix(matrix);
     Vector3 rotation = QuaternionToEuler(quaternion);
     Vector3 scale = GetScaleFromMatrix(matrix);
 
-    
+    Matrix *object_matrix = &objects[selected.index].model.transform;
+
+
     float translate_X = input_value_matrix(selected, &matrix_input[0], mouse_pos, rect, matrix.m12, "X position");
-    apply_translation(rect, &matrix_input[0], &objects[selected.index].model.transform.m12, translate_X);
+    apply_translation(rect, &matrix_input[0], selected, object_matrix, (Vector3){translate_X, matrix.m13, matrix.m14}, objects);
 
     rect.y += 30;
     float translate_Y = input_value_matrix(selected, &matrix_input[1], mouse_pos, rect, matrix.m13, "Y position");
-    apply_translation(rect, &matrix_input[1], &objects[selected.index].model.transform.m13, translate_Y);
+    apply_translation(rect, &matrix_input[1], selected, object_matrix, (Vector3){matrix.m12, translate_Y, matrix.m14}, objects);
 
     rect.y += 30;
     float translate_Z = input_value_matrix(selected, &matrix_input[2], mouse_pos, rect, matrix.m14, "Z position");
-    apply_translation(rect, &matrix_input[2], &objects[selected.index].model.transform.m14, translate_Z);
+    apply_translation(rect, &matrix_input[2], selected, object_matrix, (Vector3){matrix.m12, matrix.m13, translate_Z}, objects);
 
 
     rect.y += 40;
     float rotate_X = input_value_matrix(selected, &matrix_input[3], mouse_pos, rect, rotation.x * RAD2DEG, "X rotation");
-    apply_rotation(rect, &matrix_input[3], selected, &objects[selected.index].model.transform, (Vector3){rotate_X * DEG2RAD, rotation.y, rotation.z});
+    apply_rotation(rect, &matrix_input[3], selected, object_matrix, (Vector3){rotate_X * DEG2RAD, rotation.y, rotation.z}, objects);
+    
     rect.y += 30;
     float rotate_Y = input_value_matrix(selected, &matrix_input[4], mouse_pos, rect, rotation.y * RAD2DEG, "Y rotation");
-    apply_rotation(rect, &matrix_input[4], selected, &objects[selected.index].model.transform, (Vector3){rotation.x, rotate_Y * DEG2RAD, rotation.z});
+    apply_rotation(rect, &matrix_input[4], selected, object_matrix, (Vector3){rotation.x, rotate_Y * DEG2RAD, rotation.z}, objects);
+    
     rect.y += 30;
     float rotate_Z = input_value_matrix(selected, &matrix_input[5], mouse_pos, rect, rotation.z * RAD2DEG, "Z rotation");
-    apply_rotation(rect, &matrix_input[5], selected, &objects[selected.index].model.transform, (Vector3){rotation.x, rotation.y, rotate_Z * DEG2RAD});
+    apply_rotation(rect, &matrix_input[5], selected, object_matrix, (Vector3){rotation.x, rotation.y, rotate_Z * DEG2RAD}, objects);
 
+    
     rect.y += 40;
     float scale_X = input_value_matrix(selected, &matrix_input[6], mouse_pos, rect, scale.x, "X scale");
-    apply_scale(rect, &matrix_input[6], selected, &objects[selected.index].model.transform, (Vector3){scale_X, scale.y, scale.z});
+    apply_scale(rect, &matrix_input[6], selected, object_matrix, (Vector3){scale_X, scale.y, scale.z}, objects);
 
     rect.y += 30;
     float scale_Y = input_value_matrix(selected, &matrix_input[7], mouse_pos, rect, scale.y, "Y scale");
-    apply_scale(rect, &matrix_input[7], selected, &objects[selected.index].model.transform, (Vector3){scale.x, scale_Y, scale.z});
+    apply_scale(rect, &matrix_input[7], selected, object_matrix, (Vector3){scale.x, scale_Y, scale.z}, objects);
 
     rect.y += 30;
     float scale_Z = input_value_matrix(selected, &matrix_input[8], mouse_pos, rect, scale.z, "Z scale");
-    apply_scale(rect, &matrix_input[8], selected, &objects[selected.index].model.transform, (Vector3){scale.x, scale.y, scale_Z});
-    
+    apply_scale(rect, &matrix_input[8], selected, object_matrix, (Vector3){scale.x, scale.y, scale_Z}, objects);
 }
