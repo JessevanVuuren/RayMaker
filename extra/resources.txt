@@ -3,3 +3,12 @@ https://github.com/raysan5/raylib/blob/master/examples/shaders/resources/shaders
 https://www.raylib.com/examples/shaders/loader.html?name=shaders_postprocessing
 https://www.raylib.com/examples/shaders/loader.html?name=shaders_basic_lighting
 https://www.raylib.com/examples/shaders/loader.html?name=shaders_mesh_instancing
+
+https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)
+
+  --preload-file resources      // Specify a resources directory for data compilation (it will generate a .data file)
+  -s TOTAL_MEMORY=67108864      // Specify a heap memory size in bytes (default = 16MB) (67108864 = 64MB)
+  -s ALLOW_MEMORY_GROWTH=1      // Allow automatic heap memory resizing -> NOT RECOMMENDED!
+  -s FORCE_FILESYSTEM=1         // Force filesystem creation to load/save files data (for example if you need to support save-game or drag&drop files)
+  -s ASSERTIONS=1               // Enable runtime checks for common memory allocation errors (-O1 and above turn it off)
+  --profiling                   // Include information for code profiling

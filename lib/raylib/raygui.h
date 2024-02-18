@@ -4680,7 +4680,6 @@ const char **GetTextLines(const char *text, int *count)
     int textSize = (int)strlen(text);
 
     lines[0] = text;
-    int len = 0;
     *count = 1;
     //int lineSize = 0;   // Stores current line size, not returned
 
@@ -4691,13 +4690,10 @@ const char **GetTextLines(const char *text, int *count)
             //lineSize = len;
             k++;
             lines[k] = &text[i + 1];     // WARNING: next value is valid?
-            len = 0;
             *count += 1;
         }
-        else len++;
     }
 
-    //lines[*count - 1].size = len;
 
     return lines;
 }

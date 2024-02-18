@@ -23,6 +23,7 @@
 #define SUPPORT_MODULE_RMODELS
 
 Vector3 camera_start_pos = {20, 20, -20};
+
 Vector3 origin = {0};
 
 int main() {
@@ -53,7 +54,8 @@ int main() {
 
     load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars");
     // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars2");
-    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
+    load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
+    load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church1");
     // objects[1].model.transform = MatrixTranslate(20, 0, 0);
 
     Selected selected = {0};
@@ -123,15 +125,16 @@ int main() {
                 }
 
                 for (int i = 0; i < arrlen(objects); i++) {
-
-                    RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
-                    // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
-                    if (box.hit) {
-                        dit_not_hit = false;
-                        update_selected(&selected, objects[i], i, true);
-                    }
-                    if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
-                        selected.is_selected = false;
+                    if (!objects[i].is_collection) {
+                        RayCollision box = GetRayCollisionBox(ray, GetModelBoundingBox(objects[i].model));
+                        // RayCollision box = GetRayCollisionMesh(ray, objects[i].model.meshes[0], objects[i].model.transform);
+                        if (box.hit) {
+                            dit_not_hit = false;
+                            update_selected(&selected, objects[i], i, true);
+                        }
+                        if (dit_not_hit && !xyz_control.x.ray.hit && !xyz_control.y.ray.hit && !xyz_control.z.ray.hit) {
+                            selected.is_selected = false;
+                        }
                     }
                 }
             }
@@ -209,7 +212,7 @@ int main() {
                 }
 
                 Vector3 edit_pos = origin;
-                draw_models(objects, selected);
+                if (arrlen(objects) > 0) draw_models(objects, selected);
                 if (selected.is_selected) edit_pos = getMatrixPosition(objects[selected.index].model.transform);
                 
             EndMode3D();
@@ -239,7 +242,7 @@ int main() {
             DrawTextureRec(world_layer.texture, (Rectangle){0, 0, world_layer.texture.width, -world_layer.texture.height}, (Vector2){0, 0}, WHITE);
             DrawTextureRec(xyz_layer.texture, (Rectangle){0, 0, xyz_layer.texture.width, -xyz_layer.texture.height}, (Vector2){0, 0}, WHITE);
             DrawTextureRec(ui_layer.texture, (Rectangle){0, 0, ui_layer.texture.width, -ui_layer.texture.height}, (Vector2){0, 0}, WHITE);
-            matrix_display(selected, objects, matrix_input, segoe_font);
+            if (arrlen(objects) > 0) matrix_display(selected, objects, matrix_input, segoe_font);
         EndDrawing();
         // clang-format on
     }

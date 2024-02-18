@@ -1,2 +1,4 @@
 .env
 /build/RayMaker.exe
+/debug
+/web
