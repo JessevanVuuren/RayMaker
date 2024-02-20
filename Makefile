@@ -12,15 +12,13 @@ LIBS = ./lib/raylib/libraylib.a
 
 CFLAGS = -g -gsource-map -Os -Wall
 
-EXP_FUNC = ["", "_main"]
-
-LFLAGS= -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=1610612736 -s TOTAL_STACK=512mb -s FORCE_FILESYSTEM=1 -s 'EXPORTED_RUNTIME_METHODS=["cwrap"]' -s EXPORTED_FUNCTIONS='$(EXP_FUNC)'
+LFLAGS= -s USE_GLFW=3 -s ASYNCIFY -s TOTAL_MEMORY=1610612736 -s TOTAL_STACK=512mb -s FORCE_FILESYSTEM=1 -s 'EXPORTED_RUNTIME_METHODS=["cwrap", "FS"]' -s EXPORTED_FUNCTIONS='["_main"]'
 
 OUTPUT_DIR_DEV=./debug
 OUTPUT_DIR_PRO=./web
 
 dev: LFLAGS += -s ASSERTIONS=1 -s SAFE_HEAP=1 --profiling
-dev: HTML_FILE += ./build/debug/shell-debug.html
+dev: HTML_FILE += ./build/static/index.html
 
 pro: HTML_FILE += ./build/static/index.html
 
@@ -32,10 +30,12 @@ TARGET=index.html
 dev:
 	mkdir -p $(OUTPUT_DIR_DEV)
 	mkdir -p $(OUTPUT_DIR_DEV)/src
-	echo "" > $(OUTPUT_DIR_DEV)/$(TARGET)
 
 	$(CC) $(CFLAGS) -o $(OUTPUT_DIR_DEV)/$(TARGET) $(SOURCES) $(INCLUDE_DIR) $(LIBRARY_DIR) $(LIBS) $(RESOURCES) $(HTML_FILE) $(LFLAGS)
 	cp -r ./src/* ./debug/src
+	cp -r ./build/static/js ./debug
+	cp -r ./build/static/style.css ./debug
+	
 
 
 pro:
@@ -50,3 +50,5 @@ clean-dev:
 
 clean-pro:
 	rm -rf $(OUTPUT_DIR_PRO)
+
+	

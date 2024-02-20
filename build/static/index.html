@@ -4,62 +4,156 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-
-    <style>
-        body {
-            margin: 0px;
-            overflow: hidden;
-        }
-
-        canvas.emscripten {
-            border: 0px none;
-            background-color: black;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/item_hierarchy.css">
     <script type='text/javascript' src="https://cdn.jsdelivr.net/gh/eligrey/FileSaver.js/dist/FileSaver.min.js"> </script>
-    <script type='text/javascript'>
-        function saveFileFromMEMFSToDisk(memoryFSname, localFSname)     // This can be called by C/C++ code
-        {
-            var isSafari = false; // Not supported, navigator.userAgent access is being restricted
-            //var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            var data = FS.readFile(memoryFSname);
-            var blob;
-
-            if (isSafari) blob = new Blob([data.buffer], { type: "application/octet-stream" });
-            else blob = new Blob([data.buffer], { type: "application/octet-binary" });
-
-            // NOTE: SaveAsDialog is a browser setting. For example, in Google Chrome,
-            // in Settings/Advanced/Downloads section you have a setting:
-            // 'Ask where to save each file before downloading' - which you can set true/false.
-            // If you enable this setting it would always ask you and bring the SaveAsDialog
-            saveAs(blob, localFSname);
-        }
-    </script>
 </head>
+<!-- <input type="file" id="myfile" onchange="upload_model()"> -->
 
 <body>
-    <canvas class=emscripten id=canvas oncontextmenu=event.preventDefault() tabindex=-1></canvas>
-    <p id="output" />
-    <script>
-        var Module = {
-            print: (function () {
-                var element = document.getElementById('output');
-                if (element) element.value = ''; // clear browser cache
-                return function (text) {
-                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-                    console.log(text);
-                    if (element) {
-                        element.value += text + "\n";
-                        element.scrollTop = element.scrollHeight; // focus on bottom
-                    }
-                };
-            })(),
-            canvas: (function () {
-                var canvas = document.getElementById('canvas');
-                return canvas;
-            })()
-        };
-    </script>
+    <div class="container">
+        <canvas class=emscripten id=canvas oncontextmenu=event.preventDefault() tabindex=-1></canvas>
+        
+        <div>
+            <div class="edit_file_tools">
+                <div class="edit_file_div">
+                    <img class="edit_file_svg" src="./svg/save.svg">
+                </div>
+                <div class="edit_file_div">
+                    <img class="edit_file_svg edit_file_save" src="./svg/import.svg">
+                </div>
+
+                <div class="dividing_line"></div>
+
+                <div class="edit_file_div">
+                    <img class="edit_file_svg" src="./svg/undo.svg">
+                </div>
+                <div class="edit_file_div">
+                    <img class="edit_file_svg" src="./svg/redo.svg">
+                </div>
+            </div>
+
+            <div class="move_tools">
+                <div class="edit_pos active" onclick="set_edit_tool(0)">
+                    <img class="move_img" src="./svg/move.svg">
+                </div>
+                <div class="edit_pos" onclick="set_edit_tool(1)">
+                    <img class="move_img" src="./svg/rotate.svg">
+                </div>
+                <div class="edit_pos" onclick="set_edit_tool(2)">
+                    <img class="move_img" src="./svg/scale.svg">
+                </div>
+            </div>
+
+            <div class="item_hierarchy" id="item_hierarchy">
+                <span class="collapse_window" onclick="open_hide('item_hierarchy', 'collapse_hierarchy')">
+                    <img class="collapse_svg" id="collapse_hierarchy" src="./svg/collapse_open.svg">
+                </span>
+                <span class="window_title" data-parent="item_hierarchy">Hierarchy</span>
+                <div class="item_box" id="item_box">
+                </div>
+            </div>
+
+            <div class="matrix_display" id="matrix_display">
+                <span class="collapse_window" onclick="open_hide('matrix_display', 'collapse_matrix')">
+                    <img class="collapse_svg" id="collapse_matrix" src="./svg/collapse_open.svg">
+                </span>
+                <span class="window_title" data-parent="matrix_display">Transformation</span>
+                <div class="matrix_info" id="matrix_box">
+
+                    <div class="matrix_type">
+                        <div class="matrix_type_line">
+
+                        </div>
+                        <div class="matrix_row_holder">
+                            <div class="matrix_row">
+                                <input placeholder="X position">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_mid">
+                                <input placeholder="Y position">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_bottom">
+                                <input placeholder="Z position">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="matrix_type">
+                        <div class="matrix_type_line">
+
+                        </div>
+                        <div class="matrix_row_holder">
+                            <div class="matrix_row">
+                                <input placeholder="X rotation">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_mid">
+                                <input placeholder="Y rotation">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_bottom">
+                                <input placeholder="Z rotation">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="matrix_type">
+                        <div class="matrix_type_line">
+
+                        </div>
+                        <div class="matrix_row_holder">
+                            <div class="matrix_row">
+                                <input placeholder="X scale">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_mid">
+                                <input placeholder="Y scale">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+
+                            <div class="matrix_row matrix_row_bottom">
+                                <input placeholder="Z scale">
+                                <div>
+                                    <span>APPLY</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type='text/javascript' src="js/object_list.js"> </script>
+    <script type='text/javascript' src="js/script.js"> </script>
+    <script type='text/javascript' src="js/windows.js"> </script>
+    <script type='text/javascript' src="js/emscripts.js"> </script>
     {{{ SCRIPT }}}
 </body>
 

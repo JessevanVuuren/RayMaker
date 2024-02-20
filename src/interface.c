@@ -94,7 +94,6 @@ void display_item(Rectangle box, char *name, int object_index, Font font, Select
         box.x += 7.5;
         DrawLine(box.x, box.y, box.x, box.y + text_distance, GetColor(0x484848FF));
     }
-
     DrawTextEx(font, name, (Vector2){box.x + 5, box.y}, 20, 2, WHITE);
 }
 
@@ -124,8 +123,8 @@ void component_list(Object *objects, Selected *selected, int width, int height, 
     for (int i = 0; i < arrlen(objects); i++) {
         Object o = objects[i];
         Rectangle rec = {box.x, box.y + i * text_distance, box.width, text_distance};
-
         display_item(rec, o.name, o.id, font, *selected, text_distance, o.is_part_of);
+
         item_pressed(rec, selected, objects, i);
     }
     EndScissorMode();

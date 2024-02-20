@@ -49,7 +49,7 @@ typedef struct {
 } Button;
 
 typedef struct {
-    char *name;
+    char name[100];
     int id;
     Model model;
     bool is_part_of;
@@ -72,6 +72,8 @@ typedef struct {
     int matrix_count;
 } Selected;
 
+extern EditMode control_mode;
+extern Object *objects;
 
 // interface.c
 Button load_button(char *img_path, char *name, int x, int y);
@@ -91,12 +93,16 @@ void draw_graph(int amount_of_lines, int size_between_lines);
 // objects.c
 void update_selected(Selected *selected, Object object, int index, bool is_selected);
 void draw_models(Object *objects, Selected selected);
-void load_object(Object **objects, char *model, char *texture, char *name);
+void load_object(char *model, char *texture, char *name);
 Model LoadObj(const char *filename);
 Matrix set_matrix_scale(Matrix matrix, Vector3 scale);
 Matrix set_matrix_rotation(Matrix matrix, Vector3 axis_angle);
 void move_collection(Object *objects, Selected selected, Matrix new_position);
 void update_child_matrix(Selected *selected, Object *objects, int index);
+
+//html_interface
+void callJSFunction(float value);
+
 
 #endif 
 

@@ -1,5 +1,8 @@
 #include "components.h"
 
+EditMode control_mode = MOVE;
+
+
 void draw_graph(int amount_of_lines, int size_between_lines) {
     for (int i = 0; i < amount_of_lines; i++) {
         float step = size_between_lines - (2 * amount_of_lines * i) / (float)(amount_of_lines - 1);

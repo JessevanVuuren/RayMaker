@@ -1,5 +1,7 @@
 #include "components.h"
 
+Object *objects = NULL;
+
 void update_selected(Selected *selected, Object object, int index, bool is_selected) {
     selected->object = object;
     selected->pos = getMatrixPosition(object.model.transform);
@@ -17,7 +19,7 @@ void draw_models(Object *objects, Selected selected) {
     bool collection_selected = false;
     for (int i = 0; i < arrlen(objects); i++) {
         Object o = objects[i];
-
+    
         if (!o.is_collection) {
             DrawModel(o.model, Vector3Zero(), 1, WHITE);
 
@@ -39,44 +41,34 @@ void draw_models(Object *objects, Selected selected) {
     }
 }
 
-Object load_object_glb(char *model, int id, char *name) {
-    Object object;
-    object.id = id;
-    object.name = name;
-    object.model = LoadModel(model);
-
-    return object;
-}
-
-void load_object(Object **objects, char *model, char *texture, char *name) {
-    int start_id = arrlen(*objects);
+void load_object(char *model, char *texture, char *name) {
+    int start_id = arrlen(objects);
     Model loaded_model = LoadObj(model);
     loaded_model.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = LoadTexture(texture);
+
 
     if (loaded_model.meshCount > 1) {
         Object object1;
         object1.id = start_id;
         object1.collection_id = start_id;
-        object1.name = name;
+        strncpy(object1.name, name, sizeof object1.name - 1);
         object1.is_part_of = false;
         object1.amount_of_mesh = loaded_model.meshCount;
         object1.model.transform = MatrixIdentity();
         object1.is_collection = true;
-        arrput(*objects, object1);
+        arrput(objects, object1);
 
         for (int i = 0; i < loaded_model.meshCount; i++) {
-
-            Object o = {
-                .is_part_of = true,
-                .collection_id = start_id,
-                .is_collection = false,
-                .amount_of_mesh = 1,
-                .model = LoadModelFromMesh(loaded_model.meshes[i]),
-                .name = loaded_model.names[i],
-                o.id = start_id + i + 1,
-            };
+            Object o;
+            o.is_part_of = true,
+            o.collection_id = start_id,
+            o.is_collection = false,
+            o.amount_of_mesh = 1,
+            o.model = LoadModelFromMesh(loaded_model.meshes[i]),
+            o.id = start_id + i + 1,
+            strncpy(o.name, loaded_model.names[i], sizeof o.name - 1);
             o.model.materials = loaded_model.materials;
-            arrput(*objects, o);
+            arrput(objects, o);
         }
     } else {
         Object object;
@@ -85,10 +77,10 @@ void load_object(Object **objects, char *model, char *texture, char *name) {
         object.collection_id = start_id;
         object.is_collection = false;
         object.is_part_of = false;
-        object.name = name;
+        strncpy(object.name, name, sizeof object.name - 1);
         object.model = loaded_model;
 
-        arrput(*objects, object);
+        arrput(objects, object);
     }
 }
 

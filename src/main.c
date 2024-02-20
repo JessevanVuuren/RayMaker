@@ -36,7 +36,6 @@ int main() {
 
     Font segoe_font = LoadFontEx("resources/segoe-ui.ttf", 200, 0, 0);
 
-    Object *objects = NULL;
     Button *buttons = NULL;
     InputText matrix_input[9] = {0};
 
@@ -52,15 +51,13 @@ int main() {
     buttons[0].pressed = true;
     int selected_button_index = 0;
 
-    load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars");
+    // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars");
     // load_object(&objects, "resources/models/cars.obj", "resources/models/cars.png", "cars2");
-    load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
-    load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church1");
+    // load_object(&objects, "resources/models/church.obj", "resources/models/church.png", "church");
+    // load_object("resources/models/church.obj", "resources/models/church.png", "church1");
     // objects[1].model.transform = MatrixTranslate(20, 0, 0);
 
     Selected selected = {0};
-
-    EditMode control_mode = MOVE;
 
     XYZcontrol xyz_control = init_XYZ_controls();
 
@@ -104,6 +101,7 @@ int main() {
 
 
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+                callJSFunction(-GetMouseDelta().x);
                 CameraMoveRight(&cam, -GetMouseDelta().x * CAM_MOVE_SPEED, false);
                 CameraMoveUp(&cam, GetMouseDelta().y * CAM_MOVE_SPEED);
             }

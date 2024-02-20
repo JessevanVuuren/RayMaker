@@ -1,0 +1,49 @@
+:root {
+  /* https://colorhunt.co/palette/070f2b1b1a55535c919290c3
+  --color1: #070f2b;
+  --color2: #1b1a55;
+  --color3: #535c91;
+  --color4: #9290c3; */
+
+  /* https://colorhunt.co/palette/0820322c394b334756ff4c29 */
+  /* --color1: #082032;
+  --color2: #2c394b;
+  --color3: #334756;
+  --color4: #ff4c29; */
+
+  /* https://colorhunt.co/palette/1a1a1b333f4437aa9c94f3e4 */
+  --color1: #1A1A1B;
+  --color2: #333F44;
+  --color3: #37AA9C;
+  --color4: #94F3E4;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  box-shadow: inset 0 0 5px grey;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: var(--color3);
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color4);
+}
+
+body {
+  margin: 0px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+canvas.emscripten {
+  border: 0px none;
+  background-color: rgb(110, 110, 110);
+}
