@@ -1,8 +1,9 @@
-const object_list = new CListParser();
+const file_input_obj = document.getElementById("file_input_obj")
+const file_input_mtl = document.getElementById("file_input_mtl")
+const file_input_png = document.getElementById("file_input_png")
 
-const testing = (value) => {
-  console.log("FromFile: " + value)
-}
+const object_list = new CListParser();
+const object_files = []
 
 const list_form_c = "fantasy-0-0-1-0|pointer_001-1-0-0-1|cart_001-2-0-0-1|log_004-3-0-0-1|log_003-4-0-0-1|log_001-5-0-0-1|jug_002-6-0-0-1|jug_001-7-0-0-1|holder_001-8-0-0-1|fabulous_tree_001-9-0-0-1|fabulous_mushroom_004-10-0-0-1|fabulous_mushroom_003-11-0-0-1|fabulous_mushroom_002-12-0-0-1|fabulous_mushroom_001-13-0-0-1|big_fabulous_tree_001-14-0-0-1|tree_001-15-0-0-1|fir_001-16-0-0-1|cactus_001-17-0-0-1|stall_001-18-0-0-1|barrel_001-19-0-0-1|table_001-20-0-0-1|log_002-21-0-0-1|house_003-22-0-0-1|house_002-23-0-0-1|house_001-24-0-0-1|box_001.001-25-0-0-1|stall_table_001-26-0-0-1|plate_001-27-0-0-1|jug_003-28-0-0-1|jug_005-29-0-0-1|jug_004-30-0-0-1|plate_003-31-0-0-1|plate_002-32-0-0-1|bag_001-33-0-0-1|bucket_001-34-0-0-1|box_003-35-0-0-1|box_002-36-0-0-1|box_001-37-0-0-1|bag_002-38-0-0-1|bag_003-39-0-0-1|bag_004-40-0-0-1|crane_rope_001-41-0-0-1|crane_wheel_002-42-0-0-1|crane_wheel_001-43-0-0-1|crane_hook_001-44-0-0-1|crane_001-45-0-0-1|cars-46-46-1-0|Police_Plane.008-47-46-0-1|Taxi_Plane.026-48-46-0-1|SUV_Plane.023-49-46-0-1|Pickup_Plane.009-50-46-0-1|Car_Plane.032-51-46-0-1|Van_Plane.020-52-46-0-1|Limousine_Plane.018-53-46-0-1|church-54-54-0-0|";
 object_list.parse_list(list_form_c);
@@ -62,7 +63,6 @@ updade_item_hierarchy()
 const upload_model = () => {
   const reader = new FileReader()
 
-
   const files = document.getElementById('myfile').files
   const file = files[0]
 
@@ -89,3 +89,36 @@ const set_edit_tool = (index) => {
   tools[index].classList.add("active")
 }
 
+const upload_file = (type) => {
+  const file_input = document.getElementById(type)
+  file_input.click()
+}
+
+const open_close_popup = () => {
+  const popup_file_import = document.getElementById("popup")
+  if (popup_file_import.classList.contains("hide_popup")) popup_file_import.classList.remove("hide_popup")
+  else popup_file_import.classList.add("hide_popup")
+}
+
+const set_file = (file, element, type) => {
+  const obj_text = document.getElementById(element)
+
+  if (file.name.split(".").pop() == type) {
+    obj_text.classList.remove("wrong_input_file")
+    obj_text.innerText = file.name
+  
+    const index = object_files.findIndex((e) => e.name.split(".").pop() === type)
+    if (index >= 0) object_files[index] = file
+    else object_files.push(file)
+  
+  } else {
+    obj_text.classList.add("wrong_input_file")
+    obj_text.innerText = "File must be of type ." + type
+  }
+}
+
+
+
+file_input_obj.addEventListener("change", (e) => set_file(e.target.files[0], "obj_text", "obj"))
+file_input_mtl.addEventListener("change", (e) => set_file(e.target.files[0], "mtl_text", "mtl"))
+file_input_png.addEventListener("change", (e) => set_file(e.target.files[0], "png_text", "png"))

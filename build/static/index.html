@@ -5,21 +5,21 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/item_hierarchy.css">
+    <link rel="stylesheet" href="css/file_importer.css">
+    <link rel="stylesheet" href="css/gui_window.css">
     <script type='text/javascript' src="https://cdn.jsdelivr.net/gh/eligrey/FileSaver.js/dist/FileSaver.min.js"> </script>
 </head>
-<!-- <input type="file" id="myfile" onchange="upload_model()"> -->
 
 <body>
     <div class="container">
         <canvas class=emscripten id=canvas oncontextmenu=event.preventDefault() tabindex=-1></canvas>
-        
+
         <div>
             <div class="edit_file_tools">
                 <div class="edit_file_div">
                     <img class="edit_file_svg" src="./svg/save.svg">
                 </div>
-                <div class="edit_file_div">
+                <div class="edit_file_div" onclick="open_close_popup()">
                     <img class="edit_file_svg edit_file_save" src="./svg/import.svg">
                 </div>
 
@@ -144,12 +144,67 @@
                             </div>
                         </div>
                     </div>
-
-
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="popup_background hide_popup" id="popup">
+        <div class="file_importer">
+            <input type="file" id="file_input_obj" hidden accept=".obj">
+            <input type="file" id="file_input_mtl" hidden accept=".mtl">
+            <input type="file" id="file_input_png" hidden accept=".png">
+            <div class="popup_title">
+                <snap>Import Object file</snap>
+            </div>
+            <div>
+                <div class="upload_file_row">
+                    <div class="upload_file_button" onclick="upload_file('file_input_obj')">
+                        <span>Upload</span>
+                    </div>
+
+                    <div class="file_placeholder_text">
+                        <span id="obj_text">Upload Object file .obj</span>
+                    </div>
+                </div>
+
+                <div class="upload_file_row">
+                    <div class="upload_file_button" onclick="upload_file('file_input_mtl')">
+                        <span>Upload</span>
+                    </div>
+
+                    <div class="file_placeholder_text">
+                        <span>Upload Material file .mtl</span>
+                    </div>
+                </div>
+
+                <div class="upload_file_row">
+                    <div class="upload_file_button" onclick="upload_file('file_input_png')">
+                        <span>Upload</span>
+                    </div>
+
+                    <div class="file_placeholder_text">
+                        <span>Upload Texture file .png</span>
+                    </div>
+                </div>
+
+                <div class="popup_buttons">
+                    <div class="popup_button" onclick="open_close_popup()">
+                        <span>Close</span>
+                    </div>
+                    <div class="popup_button popup_button_import">
+                        <span>Import</span>
+                    </div>
+                </div>
+
+            </div>
+
+
+
+
+        </div>
+    </div>
+
     <script type='text/javascript' src="js/object_list.js"> </script>
     <script type='text/javascript' src="js/script.js"> </script>
     <script type='text/javascript' src="js/windows.js"> </script>

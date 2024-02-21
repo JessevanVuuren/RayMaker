@@ -6,6 +6,8 @@ https://www.raylib.com/examples/shaders/loader.html?name=shaders_mesh_instancing
 
 https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)
 
+https://www.svgrepo.com/
+
   --preload-file resources      // Specify a resources directory for data compilation (it will generate a .data file)
   -s TOTAL_MEMORY=67108864      // Specify a heap memory size in bytes (default = 16MB) (67108864 = 64MB)
   -s ALLOW_MEMORY_GROWTH=1      // Allow automatic heap memory resizing -> NOT RECOMMENDED!
