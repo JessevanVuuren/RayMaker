@@ -104,6 +104,55 @@
   background-color: var(--color3);
 }
 
+
+
+.extra_tools {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin-left: 295px;
+  margin-top: 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  background-color: var(--color1);
+}
+.extra_tools:hover {
+  border-radius: 5px 5px 0px 0px;
+}
+
+.extra_tools_header {
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px 5px 0px 0px;
+  margin: 0px;
+}
+.extra_tools_header:hover{
+  background-color: var(--color2);
+}
+.extra_tools_list {
+  position: absolute;
+  margin-top: 5px;
+  background-color: var(--color1);
+  width: 200px;
+  margin-left: -10px;
+  display: none;
+  flex-direction: column;
+}
+.extra_tools_list a {
+  padding: 5px 10px;
+}
+.extra_tools_create:hover > .extra_tools_list{
+  display: flex;
+}
+.extra_tools_window:hover > .extra_tools_list {
+  display: flex;
+}
+.extra_tools_list a:hover {
+  background-color: var(--color2);
+}
+
+
 .item_hierarchy {
   padding: 10px;
   position: absolute;
